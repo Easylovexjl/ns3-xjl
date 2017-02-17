@@ -1345,89 +1345,96 @@ RoutingProtocol::ComputeRoute ()
 {
     RemoveTimeOut (); //Remove Stale Tuple
 	//暂时只实现了S一边的route
-	std::map<double, Ipv4Address> dis2Ip;
+    if(!m_lc_infoS.empty()){
+		std::map<double, Ipv4Address> dis2Ip;
 
-	for (std::map<Ipv4Address, CarInfo>::iterator cit = m_lc_infoS.begin();
-			cit != m_lc_infoS.end(); ++cit) {
-		//map内部本身就是按序存储的
-		dis2Ip.insert(std::map<double, Ipv4Address>::value_type(cit->second.distostart, cit->first));
-	}
+		for (std::map<Ipv4Address, CarInfo>::iterator cit = m_lc_infoS.begin();
+				cit != m_lc_infoS.end(); ++cit) {
+			//map内部本身就是按序存储的
+			dis2Ip.insert(std::map<double, Ipv4Address>::value_type(cit->second.distostart, cit->first));
+		}
 
-	for (std::map<double, Ipv4Address>::iterator dit = dis2Ip.begin();
+		for (std::map<double, Ipv4Address>::iterator dit = dis2Ip.begin();
+					dit != dis2Ip.end(); ++dit) {
+			std::cout<<dit->second<<"-"<<dit->first<<"\t";
+		}
+		std::cout<<std::endl;
+
+		//calculate the shortest distance using simple distance based algorithm
+		std::vector<Ipv4Address> chosenIp; //这里ip的个数就是该条链路的跳数
+		double chosendis;
+		chosenIp.push_back(dis2Ip.begin()->second);
+		std::cout<<"IP:"<<this->m_CCHmainAddress<<" has chosen a S2E route:"<<std::endl;
+		chosendis = dis2Ip.begin()->first;
+		for (std::map<double, Ipv4Address>::iterator dit = dis2Ip.begin();
 				dit != dis2Ip.end(); ++dit) {
-		std::cout<<dit->second<<"-"<<dit->first<<"\t";
-	}
-	std::cout<<std::endl;
-
-	//calculate the shortest distance using simple distance based algorithm
-	std::vector<Ipv4Address> chosenIp; //这里ip的个数就是该条链路的跳数
-	double chosendis;
-	chosenIp.push_back(dis2Ip.begin()->second);
-	std::cout<<"IP:"<<this->m_CCHmainAddress<<" has chosen a S2E route:"<<std::endl;
-	chosendis = dis2Ip.begin()->first;
-	for (std::map<double, Ipv4Address>::iterator dit = dis2Ip.begin();
-			dit != dis2Ip.end(); ++dit) {
-		if (dit->first > chosendis + 200.0) {
-			chosenIp.push_back(dit->second);
-			chosendis = dit->first;
+			if (dit->first > chosendis + 200.0) {
+				chosenIp.push_back(dit->second);
+				chosendis = dit->first;
+			}
 		}
-	}
-	for (std::vector<Ipv4Address>::iterator it = chosenIp.begin();
-				it != chosenIp.end();++it) {
-		std::cout<<*it<<"\t";
-	}
-	std::cout<<std::endl;
-	//record the route
-	Ipv4Address mask("255.255.0.0"); //这里掩码存疑，待修改
-	Ipv4Address dest = *(chosenIp.end());
-	for (std::vector<Ipv4Address>::iterator it = chosenIp.begin();
-			it != chosenIp.end();) {
-		Ipv4Address id = *it;
-		Ipv4Address next = *(++it);
-		LCAddEntry(id, dest, mask, next);
-	}
+		for (std::vector<Ipv4Address>::iterator it = chosenIp.begin();
+					it != chosenIp.end();++it) {
+			std::cout<<*it<<"\t";
+		}
+		std::cout<<std::endl;
+		//record the route
+		Ipv4Address mask("255.255.0.0"); //这里掩码存疑，待修改
+		Ipv4Address dest = *(chosenIp.end());
+		for (std::vector<Ipv4Address>::iterator it = chosenIp.begin();
+				it != chosenIp.end();) {
+			Ipv4Address id = *it;
+			Ipv4Address next = *(++it);
+			LCAddEntry(id, dest, mask, next);
+		}
+    }
+
+
 	//E2S边的实现
-	std::map<double, Ipv4Address> dis2Ipe;
+	if(!m_lc_infoE.empty()){
+		std::map<double, Ipv4Address> dis2Ipe;
 
-	for (std::map<Ipv4Address, CarInfo>::iterator cit = m_lc_infoE.begin();
-			cit != m_lc_infoE.end(); ++cit) {
-		//map内部本身就是按序存储的
-		dis2Ipe.insert(std::map<double, Ipv4Address>::value_type(cit->second.distostart, cit->first));
-	}
+		for (std::map<Ipv4Address, CarInfo>::iterator cit = m_lc_infoE.begin();
+				cit != m_lc_infoE.end(); ++cit) {
+			//map内部本身就是按序存储的
+			dis2Ipe.insert(std::map<double, Ipv4Address>::value_type(cit->second.distostart, cit->first));
+		}
 
-	for (std::map<double, Ipv4Address>::iterator dit = dis2Ipe.begin();
+		for (std::map<double, Ipv4Address>::iterator dit = dis2Ipe.begin();
+					dit != dis2Ipe.end(); ++dit) {
+			std::cout<<dit->second<<"-"<<dit->first<<"\t";
+		}
+		std::cout<<std::endl;
+
+		//calculate the shortest distance using simple distance based algorithm  -- todo
+		std::vector<Ipv4Address> chosenIpe; //这里ip的个数就是该条链路的跳数
+		double chosendise;
+		chosenIpe.push_back(dis2Ipe.begin()->second);
+		std::cout<<"IP:"<<this->m_CCHmainAddress<<" has chosen a E2S route:"<<std::endl;
+		chosendise = dis2Ipe.begin()->first;
+		for (std::map<double, Ipv4Address>::iterator dit = dis2Ipe.begin();
 				dit != dis2Ipe.end(); ++dit) {
-		std::cout<<dit->second<<"-"<<dit->first<<"\t";
-	}
-	std::cout<<std::endl;
-
-	//calculate the shortest distance using simple distance based algorithm  -- todo
-	std::vector<Ipv4Address> chosenIpe; //这里ip的个数就是该条链路的跳数
-	double chosendise;
-	chosenIpe.push_back(dis2Ipe.begin()->second);
-	std::cout<<"IP:"<<this->m_CCHmainAddress<<" has chosen a E2S route:"<<std::endl;
-	chosendise = dis2Ipe.begin()->first;
-	for (std::map<double, Ipv4Address>::iterator dit = dis2Ipe.begin();
-			dit != dis2Ipe.end(); ++dit) {
-		if (dit->first > chosendise + 200.0) {
-			chosenIpe.push_back(dit->second);
-			chosendis = dit->first;
+			if (dit->first > chosendise + 200.0) {
+				chosenIpe.push_back(dit->second);
+				chosendise = dit->first;
+			}
+		}
+		for (std::vector<Ipv4Address>::iterator it = chosenIpe.begin();
+					it != chosenIpe.end();++it) {
+			std::cout<<*it<<"\t";
+		}
+		std::cout<<std::endl;
+		//record the route
+		Ipv4Address mask("255.255.0.0"); //这里掩码存疑，待修改
+		Ipv4Address dest = *(chosenIpe.end());
+		for (std::vector<Ipv4Address>::iterator it = chosenIpe.begin();
+				it != chosenIpe.end();) {
+			Ipv4Address id = *it;
+			Ipv4Address next = *(++it);
+			LCAddEntry(id, dest, mask, next);
 		}
 	}
-	for (std::vector<Ipv4Address>::iterator it = chosenIpe.begin();
-				it != chosenIpe.end();++it) {
-		std::cout<<*it<<"\t";
-	}
-	std::cout<<std::endl;
-	//record the route
-//	Ipv4Address mask("255.255.0.0"); //这里掩码存疑，待修改
-	dest = *(chosenIpe.end());
-	for (std::vector<Ipv4Address>::iterator it = chosenIpe.begin();
-			it != chosenIpe.end();) {
-		Ipv4Address id = *it;
-		Ipv4Address next = *(++it);
-		LCAddEntry(id, dest, mask, next);
-	}
+
 	std::cout << "Hello world!" << std::endl;
 
 }//RoutingProtocol::ComputeRoute
