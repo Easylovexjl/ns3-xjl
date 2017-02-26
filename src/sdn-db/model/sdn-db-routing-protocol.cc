@@ -13,15 +13,14 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-
-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Authors: Haoliang Chen <chl41993@gmail.com>
  */
 
 
 ///
-/// \brief Implementation of SDN agent on car side 
+/// \brief Implementation of SDN agent on car&local controller side
 /// and related classes.
 ///
 /// This is the main file of this software because SDN's behaviour is
@@ -404,9 +403,9 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
           //Controller Node should discare Hello_Message
           if (GetType() == CAR  )
           {
-        	  if(m_mobility->GetPosition().x<=1000.0 && senderIfaceAddr.Get()%256 == 81)
-                  ProcessRm (messageHeader);
-        	  else if(m_mobility->GetPosition().x>1000.0 && senderIfaceAddr.Get()%256 == 84)
+//        	  if(m_mobility->GetPosition().x<=1000.0 && senderIfaceAddr.Get()%256 == 81)
+//                  ProcessRm (messageHeader);
+//        	  else if(m_mobility->GetPosition().x>1000.0 && senderIfaceAddr.Get()%256 == 84)
         		  ProcessRm (messageHeader);
           }
           break;
@@ -517,6 +516,8 @@ RoutingProtocol::ProcessHM (const sdndb::MessageHeader &msg,const Ipv4Address &s
 			m_lc_infoE[it->first] = it->second;
 //			std::cout<<"vehicle direction is E2S"<<std::endl;
 		}
+		//m_lc_info同步更新
+		m_lc_info[it->first] = it->second;
     }
   else
     {
@@ -596,6 +597,7 @@ RoutingProtocol::ProcessRm (const sdndb::MessageHeader &msg)
 
       Clear();
 
+      //外部已有调用，被clear掉之后重新设置
       SetCCHInterface(m_CCHinterface);
       SetSCHInterface(m_SCHinterface);
       //m_SCHaddr2CCHaddr.insert(std::map<Ipv4Address, Ipv4Address>::value_type(m_SCHmainAddress, m_CCHmainAddress));
@@ -723,6 +725,7 @@ RoutingProtocol::Clear()
   
 }
 
+//用来更新RoutingTableEntry
 void
 RoutingProtocol::AddEntry (const Ipv4Address &dest,
                            const Ipv4Address &mask,
@@ -818,7 +821,7 @@ RoutingProtocol::RemoveEntry (Ipv4Address const &dest)
   m_table.erase (dest);
 }
 
-
+//收到包之后决定是否需要转发
 bool
 RoutingProtocol::RouteInput(Ptr<const Packet> p,
                             const Ipv4Header &header,
@@ -941,6 +944,7 @@ void
 RoutingProtocol::NotifyRemoveAddress (uint32_t interface, Ipv4InterfaceAddress address)
 {}
 
+//把自身携带的包转出去，优先转发
 Ptr<Ipv4Route>
 RoutingProtocol::RouteOutput (Ptr<Packet> p,
              const Ipv4Header &header,
@@ -1209,6 +1213,7 @@ RoutingProtocol::SendHello ()
   QueueMessage (msg, JITTER);
 }
 
+//LC将保存在本地的车辆信息作为一个路由表转发出去
 void
 RoutingProtocol::SendRoutingMessage ()
 {
@@ -1435,9 +1440,15 @@ RoutingProtocol::ComputeRoute ()
 		}
 	}
 
-	std::cout << "Hello world!" << std::endl;
+	std::cout << "ComputeRoute finish." << std::endl;
 
 }//RoutingProtocol::ComputeRoute
+
+void
+RoutingProtocol::ComputeRoute2 ()
+{
+	std::cout<<"ComputeRoute2 finish."<<std::endl;
+}//RoutingProtocol::ComputeRoute2
 
 void
 RoutingProtocol::Do_Init_Compute ()
@@ -1861,6 +1872,8 @@ RoutingProtocol::GetShortHop(const Ipv4Address& IDa, const Ipv4Address& IDb)
       return sh;
     }//else
 }
+
+//用来更新m_lc_info中的CarInfo.R_Table
 void
 RoutingProtocol::LCAddEntry (const Ipv4Address& ID,
                            const Ipv4Address &dest,
