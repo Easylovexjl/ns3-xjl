@@ -94,6 +94,22 @@ public:
   CarDirect direct;
 };
 
+//LC的个数+1,不使用0
+#define LC_NUM 25
+class LcGraph
+{
+private:
+	int S2E[LC_NUM];//记录每个lc正方向链接的跳数【后期可以考虑扩展为每个lc正方向链接的数目】
+	int E2S[LC_NUM];//记录每个lc反方向链接的跳数
+	int w[LC_NUM][LC_NUM];//边的权重，即两条路的跳数之和
+public:
+	LcGraph();
+	void InsertW(int i, int j, int sum);
+	void SetS2E(int i, int num);
+	void SetE2S(int i, int num);
+	void BuildGraph();
+	std::vector<int> Floyd(int s, int d);
+};
 struct ShortHop
 {
   ShortHop ()
@@ -194,6 +210,7 @@ private:
   void Clear ();//implemented
   uint32_t GetSize () const { return (m_table.size ()); }
   void RemoveEntry (const Ipv4Address &dest);//implemented
+  //用来更新RoutingTableEntry
   void AddEntry (const Ipv4Address &dest,
                  const Ipv4Address &mask,
                  const Ipv4Address &next,
@@ -206,10 +223,12 @@ private:
                RoutingTableEntry &outEntry) const;//implemented
 
   // From Ipv4RoutingProtocol
+  //把自身携带的包转出去，优先转发
   virtual Ptr<Ipv4Route> RouteOutput (Ptr<Packet> p,
                                       const Ipv4Header &header,
                                       Ptr<NetDevice> oif,
                                       Socket::SocketErrno &sockerr);//implemented
+  //收到包之后决定是否需要转发
   virtual bool RouteInput (Ptr<const Packet> p,
                            const Ipv4Header &header,
                            Ptr<const NetDevice> idev,
@@ -263,7 +282,12 @@ private:
   void ProcessHM (const sdndb::MessageHeader &msg,const Ipv4Address &senderIface); //implemented
   void ProcessCRREQ (const sdndb::MessageHeader &msg);
   void ProcessCRREP (const sdndb::MessageHeader &msg);
-  void ComputeRoute ();//
+  /*add by xjl 2017-3-1*/
+  void SendLclinkMessage (uint32_t s, uint32_t e);
+  void ProcessLM(const sdndb::MessageHeader &msg);
+  void ComputeRoute ();//a basic version based on distance
+  void ComputeRoute2 ();
+  /*end add*/
 
   /// Check that address is one of my interfaces
   bool IsMyOwnAddress (const Ipv4Address & a) const;//implemented
@@ -310,6 +334,7 @@ private:
   bool m_linkEstablished;
   std::vector< std::set<Ipv4Address> > m_Sections;
   ShortHop GetShortHop (const Ipv4Address& IDa, const Ipv4Address& IDb);
+  //用来更新RoutingTableEntry中的R_Table
   void LCAddEntry( const Ipv4Address& ID,
                    const Ipv4Address& dest,
                    const Ipv4Address& mask,
@@ -376,6 +401,9 @@ private:
   //判断car的方向，S2E指从数值小的一边走到数值大的一边，E2S则相反
   //计算当前车辆距离所在车道起点的距离
   void ConfigDisDirect(Vector3D lastpos,Vector3D currentpos, double &distance, CarDirect &direct);
+private:
+  LcGraph m_lcgraph;//保存lc地图
+  std::map<Ipv4Address,std::vector<Ipv4Address>> m_gc_info;
 };
 
 

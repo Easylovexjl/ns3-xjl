@@ -87,14 +87,218 @@
 
 #define INFHOP 2147483647
 
-#define max_car_number 256
+#define max_car_number 512
+#define CARNUM 100
 #define MAX 10000
+
 
 namespace ns3 {
 namespace sdndb {
 
 NS_LOG_COMPONENT_DEFINE ("SdndbRoutingProtocol");
 
+/********** LcGraph class **********/
+LcGraph::LcGraph()
+{
+	for(int i=0; i<LC_NUM; i++)
+	{
+		S2E[i]=0;
+		E2S[i]=0;
+		for(int j=0; j<LC_NUM; j++)
+		{
+			w[i][j] = 0;
+		}
+	}
+}
+void LcGraph::InsertW(int i, int j, int sum)
+{
+	w[i][j]=sum;
+}
+void LcGraph::SetS2E(int i, int num)
+{
+	S2E[i] = num;
+}
+void LcGraph::SetE2S(int i, int num)
+{
+	E2S[i] = num;
+}
+void LcGraph::BuildGraph()
+{
+	InsertW(1,2,S2E[1]+S2E[2]);
+	InsertW(1,5,S2E[1]+S2E[5]);
+	InsertW(1,4,E2S[1]+S2E[4]);
+
+	InsertW(2,1,E2S[2]+E2S[1]);
+	InsertW(2,5,E2S[2]+S2E[5]);
+	InsertW(2,6,S2E[2]+S2E[6]);
+	InsertW(2,3,S2E[2]+S2E[1]);
+
+	InsertW(3,2,E2S[3]+E2S[2]);
+	InsertW(3,6,E2S[3]+S2E[6]);
+	InsertW(3,7,S2E[3]+S2E[7]);
+
+	InsertW(4,11,S2E[4]+S2E[11]);
+	InsertW(4,8,S2E[4]+S2E[8]);
+	InsertW(4,1,E2S[4]+S2E[1]);
+
+	InsertW(5,1,E2S[5]+E2S[1]);
+	InsertW(5,8,S2E[5]+E2S[8]);
+	InsertW(5,12,S2E[5]+S2E[12]);
+	InsertW(5,9,S2E[5]+S2E[9]);
+	InsertW(5,2,E2S[5]+S2E[2]);
+
+	InsertW(6,2,E2S[6]+E2S[2]);
+	InsertW(6,9,S2E[6]+E2S[9]);
+	InsertW(6,13,S2E[6]+S2E[13]);
+	InsertW(6,10,S2E[6]+S2E[10]);
+	InsertW(6,3,E2S[6]+S2E[3]);
+
+	InsertW(7,3,E2S[7]+E2S[3]);
+	InsertW(7,10,S2E[7]+E2S[10]);
+	InsertW(7,14,S2E[7]+S2E[14]);
+
+	InsertW(8,4,E2S[8]+E2S[4]);
+	InsertW(8,11,E2S[8]+S2E[11]);
+	InsertW(8,12,S2E[8]+S2E[12]);
+	InsertW(8,9,S2E[8]+S2E[9]);
+	InsertW(8,5,S2E[8]+E2S[5]);
+
+	InsertW(9,5,E2S[9]+E2S[5]);
+	InsertW(9,8,E2S[9]+E2S[8]);
+	InsertW(9,12,E2S[9]+S2E[12]);
+	InsertW(9,13,S2E[9]+S2E[13]);
+	InsertW(9,10,S2E[9]+S2E[10]);
+	InsertW(9,6,S2E[9]+E2S[6]);
+
+	InsertW(10,6,E2S[10]+E2S[6]);
+	InsertW(10,9,E2S[10]+E2S[9]);
+	InsertW(10,13,E2S[10]+S2E[13]);
+	InsertW(10,14,S2E[10]+S2E[14]);
+	InsertW(10,7,S2E[10]+E2S[7]);
+
+	InsertW(11,18,S2E[11]+S2E[18]);
+	InsertW(11,15,S2E[11]+S2E[15]);
+	InsertW(11,8,E2S[11]+S2E[8]);
+	InsertW(11,4,E2S[11]+E2S[4]);
+
+	InsertW(12,8,E2S[12]+E2S[8]);
+	InsertW(12,15,S2E[12]+E2S[15]);
+	InsertW(12,19,S2E[12]+S2E[19]);
+	InsertW(12,16,S2E[12]+S2E[16]);
+	InsertW(12,9,E2S[12]+S2E[9]);
+	InsertW(12,5,E2S[12]+E2S[5]);
+
+	InsertW(13,9,E2S[13]+E2S[9]);
+	InsertW(13,16,S2E[13]+E2S[16]);
+	InsertW(13,20,S2E[13]+S2E[20]);
+	InsertW(13,17,S2E[13]+S2E[17]);
+	InsertW(13,10,E2S[13]+S2E[10]);
+	InsertW(13,6,E2S[13]+E2S[6]);
+
+	InsertW(14,10,E2S[14]+E2S[10]);
+	InsertW(14,17,S2E[14]+E2S[17]);
+	InsertW(14,21,S2E[14]+S2E[21]);
+	InsertW(14,7,E2S[14]+E2S[7]);
+
+	InsertW(15,11,E2S[15]+E2S[11]);
+	InsertW(15,18,E2S[15]+S2E[18]);
+	InsertW(15,19,S2E[15]+S2E[19]);
+	InsertW(15,16,S2E[15]+S2E[16]);
+	InsertW(15,12,S2E[15]+E2S[12]);
+
+	InsertW(16,12,E2S[16]+E2S[12]);
+	InsertW(16,15,E2S[16]+E2S[15]);
+	InsertW(16,19,E2S[16]+S2E[19]);
+	InsertW(16,20,S2E[16]+S2E[20]);
+	InsertW(16,17,S2E[16]+S2E[17]);
+	InsertW(16,13,S2E[16]+E2S[13]);
+
+	InsertW(17,13,E2S[17]+E2S[13]);
+	InsertW(17,16,E2S[17]+E2S[16]);
+	InsertW(17,20,E2S[17]+S2E[20]);
+	InsertW(17,21,S2E[17]+S2E[21]);
+	InsertW(17,14,S2E[17]+E2S[14]);
+
+	InsertW(18,22,S2E[18]+S2E[22]);
+	InsertW(18,15,E2S[18]+S2E[15]);
+	InsertW(18,11,E2S[18]+E2S[11]);
+
+	InsertW(19,15,E2S[19]+E2S[15]);
+	InsertW(19,22,S2E[19]+E2S[22]);
+	InsertW(19,23,S2E[19]+S2E[23]);
+	InsertW(19,16,E2S[19]+S2E[16]);
+	InsertW(19,12,E2S[19]+E2S[12]);
+
+	InsertW(20,16,E2S[20]+E2S[16]);
+	InsertW(20,23,S2E[20]+E2S[23]);
+	InsertW(20,24,S2E[20]+S2E[24]);
+	InsertW(20,17,E2S[20]+S2E[17]);
+	InsertW(20,13,E2S[20]+E2S[13]);
+
+	InsertW(21,17,E2S[21]+E2S[17]);
+	InsertW(21,24,S2E[21]+E2S[24]);
+	InsertW(21,14,E2S[21]+E2S[14]);
+
+	InsertW(22,18,E2S[22]+E2S[18]);
+	InsertW(22,23,S2E[22]+S2E[23]);
+	InsertW(22,19,S2E[22]+E2S[19]);
+
+	InsertW(23,19,E2S[23]+E2S[19]);
+	InsertW(23,22,E2S[23]+E2S[22]);
+	InsertW(23,24,S2E[23]+S2E[24]);
+	InsertW(23,20,S2E[23]+E2S[20]);
+
+	InsertW(24,20,E2S[24]+E2S[20]);
+	InsertW(24,23,E2S[24]+E2S[23]);
+	InsertW(24,21,S2E[24]+E2S[21]);
+}
+std::vector<int> LcGraph::Floyd(int s, int d)
+{
+	std::vector<int> result;
+	int A[LC_NUM][LC_NUM];
+	int path[LC_NUM][LC_NUM];
+	int i, j, k;
+	for(i=0; i<LC_NUM; i++)
+	{
+		for(j=0; j<LC_NUM; j++)
+		{
+			A[i][j] = w[i][j];
+			path[i][j] = -1;
+		}
+	}
+	for(k=1; k<LC_NUM; k++)
+	{
+		for(i=1; i<LC_NUM; i++)
+		{
+			for(j=1; j<LC_NUM; j++)
+			{
+				if(i==j || i==k || j==k)
+				{
+					continue;
+				}
+				if(A[i][k]!=0 && A[j][k]!=0)
+				{
+					if(A[i][j]>A[i][k] + A[k][j] || A[i][j]==0)
+					{
+						A[i][j] = A[i][k] + A[k][j];
+						path[i][j] = k;
+					}
+				}
+
+			}
+		}
+	}
+
+	result.push_back(s);
+	k=s;
+	while(path[k][d] != -1)
+	{
+		k = path[k][d];
+		result.push_back(k);
+	}
+	result.push_back(d);
+	return result;
+}
 
 /********** SDN controller class **********/
 
@@ -446,6 +650,16 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
           if (GetType() == LOCAL_CONTROLLER)
             ProcessCRREP (messageHeader);
           break;
+        case sdndb::MessageHeader::LCLINK_MESSAGE:
+        	NS_LOG_DEBUG(Simulator::Now().GetSeconds()
+        			<<"s SDN node " << m_CCHmainAddress
+                    << " received CRREQ message of size "
+                    << messageHeader.GetSerializedSize ());
+        	if(GetType() == GLOBAL_CONTROLLER)
+        	{
+        		ProcessLM(messageHeader);
+        	}
+        	break;
         default:
           NS_LOG_DEBUG ("SDN message type " <<
                         int (messageHeader.GetMessageType ()) <<
@@ -464,6 +678,7 @@ RoutingProtocol::ProcessHM (const sdndb::MessageHeader &msg,const Ipv4Address &s
 //      <<msg.GetHello().GetPosition().y<<") m_lc_info size:"
 //      <<m_lc_info.size ()<<std::endl;
 
+	//第三次收到某辆车的hello包的时候应该直接更新m_lc_infoS或者m_lc_infoE的数据 //todo
   ConfigStartEnd();
   Ipv4Address ID = msg.GetHello ().ID;//should be SCH address
   m_SCHaddr2CCHaddr[ID] = msg.GetOriginatorAddress();
@@ -716,7 +931,30 @@ RoutingProtocol::ProcessCRREP (const sdndb::MessageHeader &msg)
   //std::cout<<"ProcessCRREP"<<std::endl;
   	 SendRoutingMessage();
 }
+void RoutingProtocol::ProcessLM(const sdndb::MessageHeader &msg)
+{
+	NS_LOG_FUNCTION(msg);
 
+	const sdndb::MessageHeader::LCLINK &lclink = msg.GetLCLINK();
+	Ipv4Address lc_ip = lclink.lcAddress;
+	int id = lc_ip.Get()%256 - CARNUM;
+	m_lcgraph.SetS2E(id,lclink.S2E);
+	m_lcgraph.SetE2S(id,lclink.E2S);
+	m_gc_info[lc_ip].clear();//清空该lc下的所有车辆ip后再更新
+	for(std::vector<Ipv4Address>::const_iterator it = lclink.lc_info.begin(); it != lclink.lc_info.end(); ++it)
+	{
+		m_gc_info[lc_ip].push_back(*it);
+	}
+	if(id == 9)
+	{
+		std::cout<<"lc "<<id<<" S2E = "<<lclink.S2E<<" E2S = "<<lclink.E2S<<std::endl;
+		for(std::vector<Ipv4Address>::const_iterator it = m_gc_info[lc_ip].begin(); it != m_gc_info[lc_ip].end(); ++it)
+		{
+			std::cout<<*it<<" ";
+		}
+		std::cout<<std::endl;
+	}
+}
 void
 RoutingProtocol::Clear()
 {
@@ -1320,6 +1558,33 @@ RoutingProtocol::SendCRREP( Ipv4Address const &sourceAddress,
   QueueMessage (msg, JITTER);
 }
 
+void RoutingProtocol::SendLclinkMessage (uint32_t s, uint32_t e)
+{
+	NS_LOG_FUNCTION(this);
+	sdndb::MessageHeader msg;
+	Time now = Simulator::Now();
+	msg.SetVTime(m_helloInterval);
+	msg.SetMessageSequenceNumber(GetMessageSequenceNumber());
+	msg.SetMessageType(sdndb::MessageHeader::LCLINK_MESSAGE);
+	sdndb::MessageHeader::LCLINK &lclink = msg.GetLCLINK();
+	lclink.lcAddress = this->m_CCHmainAddress;
+	lclink.S2E = s;
+	lclink.E2S = e;
+	for(std::map<Ipv4Address,CarInfo>::const_iterator it=m_lc_info.begin(); it != m_lc_info.end(); ++it)
+	{
+		lclink.lc_info.push_back(it->first);
+	}
+	if(lclink.lcAddress.Get()%256-CARNUM == 9)
+	{
+		std::cout<<"lc "<<lclink.lcAddress<<" S2E = "<<lclink.S2E<<" E2S = "<<lclink.E2S <<std::endl;
+		for(std::vector<Ipv4Address>::const_iterator it=lclink.lc_info.begin(); it != lclink.lc_info.end(); ++it)
+		{
+			std::cout<<*it<<" ";
+		}
+		std::cout<<std::endl;
+	}
+	QueueMessage(msg, JITTER);
+}
 
 void
 RoutingProtocol::SetMobility (Ptr<MobilityModel> mobility)
@@ -1349,7 +1614,10 @@ void
 RoutingProtocol::ComputeRoute ()
 {
     RemoveTimeOut (); //Remove Stale Tuple
-	//暂时只实现了S一边的route
+    std::vector<Ipv4Address> chosenIp; //这里ip的个数就是S2E边链路的跳数
+    std::vector<Ipv4Address> chosenIpe; //这里ip的个数就是E2S边链路的跳数
+    std::map<double, Ipv4Address> dis2Ipe;
+	//S一边的route
     if(!m_lc_infoS.empty()){
 		std::map<double, Ipv4Address> dis2Ip;
 
@@ -1366,7 +1634,7 @@ RoutingProtocol::ComputeRoute ()
 		std::cout<<std::endl;
 
 		//calculate the shortest distance using simple distance based algorithm
-		std::vector<Ipv4Address> chosenIp; //这里ip的个数就是该条链路的跳数
+		//std::vector<Ipv4Address> chosenIp; //这里ip的个数就是该条链路的跳数
 		double chosendis;
 		chosenIp.push_back(dis2Ip.begin()->second);
 		std::cout<<"IP:"<<this->m_CCHmainAddress<<" has chosen a S2E route:"<<std::endl;
@@ -1397,7 +1665,7 @@ RoutingProtocol::ComputeRoute ()
 
 	//E2S边的实现
 	if(!m_lc_infoE.empty()){
-		std::map<double, Ipv4Address> dis2Ipe;
+		//std::map<double, Ipv4Address> dis2Ipe;
 
 		for (std::map<Ipv4Address, CarInfo>::iterator cit = m_lc_infoE.begin();
 				cit != m_lc_infoE.end(); ++cit) {
@@ -1412,7 +1680,7 @@ RoutingProtocol::ComputeRoute ()
 		std::cout<<std::endl;
 
 		//calculate the shortest distance using simple distance based algorithm  -- todo
-		std::vector<Ipv4Address> chosenIpe; //这里ip的个数就是该条链路的跳数
+
 		double chosendise;
 		chosenIpe.push_back(dis2Ipe.begin()->second);
 		std::cout<<"IP:"<<this->m_CCHmainAddress<<" has chosen a E2S route:"<<std::endl;
@@ -1439,6 +1707,9 @@ RoutingProtocol::ComputeRoute ()
 			LCAddEntry(id, dest, mask, next);
 		}
 	}
+	int s = chosenIp.size();
+	int e = chosenIpe.size();
+	this->SendLclinkMessage(s,e);
 
 	std::cout << "ComputeRoute finish." << std::endl;
 

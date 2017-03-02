@@ -29,11 +29,13 @@
 #define SDN_PKT_HEADER_SIZE 8
 #define SDN_MSG_HEADER_SIZE 12
 #define SDN_HELLO_HEADER_SIZE 28
-#define SDN_RM_HEADER_SIZE 16
+//SDN_RM_HEADER_SIZE原来写成16了--2017/3/1
+#define SDN_RM_HEADER_SIZE 8
 #define SDN_RM_TUPLE_SIZE 3
 #define SDN_APPOINTMENT_HEADER_SIZE 12
 #define SDN_CRREQ_HEADER_SIZE 8
 #define SDN_CRREP_HEADER_SIZE 12
+#define SDN_LCLINK_HEADER_SIZE 12
 
 NS_LOG_COMPONENT_DEFINE ("SdndbHeader");
 
@@ -179,6 +181,9 @@ MessageHeader::GetSerializedSize (void) const
     case CARROUTERESPONCE_MESSAGE:
       size += m_message.crrep.GetSerializedSize ();
       break;
+    case LCLINK_MESSAGE:
+    	size += m_message.lclink.GetSerializedSize();
+    	break;
     //todo
     //case CARROUTERESPONCE_MESSAGE:
       //size += m_message.appointment.GetSerializedSize ();
@@ -223,6 +228,9 @@ MessageHeader::Serialize (Buffer::Iterator start) const
     case CARROUTERESPONCE_MESSAGE:
       m_message.crrep.Serialize (i);
       break;
+    case LCLINK_MESSAGE:
+    	m_message.lclink.Serialize(i);
+    	break;
     //todo
     default:
       NS_ASSERT (false);
@@ -238,7 +246,7 @@ MessageHeader::Deserialize (Buffer::Iterator start)
   uint32_t add_temp = i.ReadNtohU32();
   SetOriginatorAddress(Ipv4Address(add_temp));
   m_messageType  = (MessageType) i.ReadU8 ();
-  NS_ASSERT (m_messageType >= HELLO_MESSAGE && m_messageType <= CARROUTERESPONCE_MESSAGE);//todo
+  NS_ASSERT (m_messageType >= HELLO_MESSAGE && m_messageType <= LCLINK_MESSAGE);//todo
   m_vTime  = i.ReadU8 ();
   m_messageSize  = i.ReadNtohU16 ();
   m_timeToLive  = i.ReadNtohU16 ();
@@ -266,6 +274,10 @@ MessageHeader::Deserialize (Buffer::Iterator start)
       size +=
         m_message.crrep.Deserialize (i, m_messageSize - SDN_MSG_HEADER_SIZE);
       break;
+    case LCLINK_MESSAGE:
+    	size +=
+    			m_message.lclink.Deserialize(i, m_messageSize - SDN_MSG_HEADER_SIZE);
+    	break;
     //todo
     default:
       NS_ASSERT (false);
@@ -508,7 +520,67 @@ MessageHeader::CRREP::Deserialize (Buffer::Iterator start, uint32_t messageSize)
   this->transferAddress.Set (ip_temp);
   return (messageSize);
 }
+// ---------------- SDN LCLINK Message -------------------------------
 
+uint32_t
+MessageHeader::LCLINK::GetSerializedSize (void) const
+{
+  return (SDN_LCLINK_HEADER_SIZE +
+    this->lc_info.size () * IPV4_ADDRESS_SIZE);
+}
+
+void
+MessageHeader::LCLINK::Print (std::ostream &os) const
+{
+  /// \todo
+}
+
+void
+MessageHeader::LCLINK::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU32 (this->lcAddress.Get());
+  i.WriteHtonU32 (this->S2E);
+  i.WriteHtonU32 (this->E2S);
+
+  for (std::vector<Ipv4Address>::const_iterator iter =
+    this->lc_info.begin ();
+    iter != this->lc_info.end ();
+    iter++)
+    {
+      i.WriteHtonU32 (iter->Get());
+    }
+}
+
+uint32_t
+MessageHeader::LCLINK::Deserialize (Buffer::Iterator start, uint32_t messageSize)
+{
+  Buffer::Iterator i = start;
+
+  this->lc_info.clear ();
+  NS_ASSERT (messageSize >= SDN_LCLINK_HEADER_SIZE);
+
+  uint32_t ip_temp = i.ReadNtohU32 ();
+  this->lcAddress.Set(ip_temp);
+  this->S2E = i.ReadNtohU32();
+  this->E2S = i.ReadNtohU32();
+
+  NS_ASSERT ((messageSize - SDN_LCLINK_HEADER_SIZE) %
+    IPV4_ADDRESS_SIZE == 0);
+
+  int num = (messageSize - SDN_LCLINK_HEADER_SIZE)
+    / IPV4_ADDRESS_SIZE;
+  Ipv4Address temp;
+  for (int n = 0; n < num; ++n)
+  {
+	  ip_temp = i.ReadNtohU32();
+      temp.Set(ip_temp);
+      this->lc_info.push_back (temp);
+   }
+
+  return (messageSize);
+}
 
 }
 }  // namespace sdndb, ns3

@@ -129,6 +129,7 @@ public:
     APPOINTMENT_MESSAGE,
     CARROUTEREQUEST_MESSAGE,
     CARROUTERESPONCE_MESSAGE,
+    LCLINK_MESSAGE,
     //LCROUTEREQUEST_MESSAGE,
     //LCROUTERESPONCE_MESSAGE
   };
@@ -422,6 +423,17 @@ public:
     void Serialize (Buffer::Iterator start) const;
     uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
   };
+  struct LCLINK
+  {
+	  Ipv4Address lcAddress;
+	  uint32_t S2E, E2S;
+	  std::vector<Ipv4Address> lc_info;//在该lc区域的所有车辆ip
+
+		void Print (std::ostream &os) const;
+		uint32_t GetSerializedSize (void) const;
+		void Serialize (Buffer::Iterator start) const;
+		uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
+  };
   
 
 private:
@@ -432,6 +444,7 @@ private:
     Appointment appointment;
     CRREQ crreq;
     CRREP crrep;
+    LCLINK lclink;
   } m_message; // union not allowed
 
 public:
@@ -500,6 +513,18 @@ public:
       }
     return (m_message.crrep);
   }
+  LCLINK& GetLCLINK()
+  {
+	  if(m_messageType == 0)
+	  {
+		  m_messageType = LCLINK_MESSAGE;
+	  }
+	  else
+	  {
+		  NS_ASSERT(m_messageType == LCLINK_MESSAGE);
+	  }
+	  return (m_message.lclink);
+  }
   const Hello& GetHello () const
   {
     NS_ASSERT (m_messageType == HELLO_MESSAGE);
@@ -528,6 +553,12 @@ public:
   {
     NS_ASSERT (m_messageType == CARROUTERESPONCE_MESSAGE);
     return (m_message.crrep);
+  }
+
+  const LCLINK& GetLCLINK() const
+  {
+	  NS_ASSERT(m_messageType == LCLINK_MESSAGE);
+	  return (m_message.lclink);
   }
 };
 
