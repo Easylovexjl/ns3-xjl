@@ -665,11 +665,11 @@ RoutingProtocol::SetInterfaceExclusions (std::set<uint32_t> exceptions)
 void
 RoutingProtocol::RecvSDN (Ptr<Socket> socket)
 {
-  //if (m_CCHmainAddress.Get () % 256 > 50)
-  //std::cout<<"RecvSDN on "<<m_CCHmainAddress.Get () % 256<<std::endl;
+//	std::cout<<"recvSDN on  "<<this->m_CCHmainAddress <<std::endl;
   Ptr<Packet> receivedPacket;
   Address sourceAddress;
   receivedPacket = socket->RecvFrom (sourceAddress);//CCH address
+
 
   InetSocketAddress inetSourceAddr = InetSocketAddress::ConvertFrom (sourceAddress);
   Ipv4Address senderIfaceAddr = inetSourceAddr.GetIpv4 ();
@@ -678,6 +678,11 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
   NS_LOG_DEBUG ("SDN node " << m_CCHmainAddress
                 << " received a SDN packet from "
                 << senderIfaceAddr << " to " << receiverIfaceAddr);
+//  if(senderIfaceAddr.Get()%256 == 109){
+//	  std::cout<<"SDN node " << m_CCHmainAddress
+//			  << " received a SDN packet from "
+//			  << senderIfaceAddr << " to " << receiverIfaceAddr<<std::endl;
+//  }
 
   // All routing messages are sent from and to port RT_PORT,
   // so we check it.
@@ -704,8 +709,15 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
                     << std::dec << int (messageHeader.GetMessageType ())
                     << " TTL=" << int (messageHeader.GetTimeToLive ())
                     << " SeqNum=" << messageHeader.GetMessageSequenceNumber ());
+//      if(senderIfaceAddr.Get()%256 == 109){
+//    	  std::cout<<"SDN Msg received with type "
+//                  << std::dec << int (messageHeader.GetMessageType ())
+//                  << " TTL=" << int (messageHeader.GetTimeToLive ())
+//                  << " SeqNum=" << messageHeader.GetMessageSequenceNumber ()<<std::endl;
+//      }
       messages.push_back (messageHeader);
     }
+//  std::cout<<"messages size = "<<messages.size()<<std::endl;
 
   m_rxPacketTrace (sdndbPacketHeader, messages);
   
@@ -724,7 +736,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
           continue;
         }
 
-      //std::cout<<"preprocesshm " << messageHeader.GetOriginatorAddress().Get ()<<std::endl;
+//      std::cout<<"messageHeader.GetMessageType (): " << messageHeader.GetMessageType ()<<std::endl;
 
       switch (messageHeader.GetMessageType ())
         {
@@ -1034,7 +1046,7 @@ RoutingProtocol::ProcessCRREP (const sdndb::MessageHeader &msg)
 void RoutingProtocol::ProcessLM(const sdndb::MessageHeader &msg)
 {
 	NS_LOG_FUNCTION(msg);
-
+	std::cout<<"ProcessLM start."<<std::endl;
 	const sdndb::MessageHeader::LCLINK &lclink = msg.GetLCLINK();
 	Ipv4Address lc_ip = lclink.lcAddress;
 	int id = lc_ip.Get()%256 - CARNUM;
@@ -1483,13 +1495,16 @@ RoutingProtocol::SendQueuedMessages ()
   int numMessages = 0;
 
   NS_LOG_DEBUG ("SDN node " << m_CCHmainAddress << ": SendQueuedMessages");
-  //std::cout<<"SendQueuedMessages  "<<m_CCHmainAddress.Get ()%256 <<std::endl;
+//  std::cout<<"SendQueuedMessages  "<<m_CCHmainAddress.Get ()%256 <<std::endl;
   MessageList msglist;
 
   for (std::vector<sdndb::MessageHeader>::const_iterator message = m_queuedMessages.begin ();
        message != m_queuedMessages.end ();
        ++message)
     {
+//	  if(message->GetOriginatorAddress().Get()%256 == 109){
+//		  std::cout<<"sendqueuedmessage from lc 109."<<std::endl;
+//	  }
       Ptr<Packet> p = Create<Packet> ();
       p->AddHeader (*message);
       packet->AddAtEnd (p);
@@ -1670,8 +1685,10 @@ void RoutingProtocol::SendLclinkMessage (uint32_t s, uint32_t e)
 	sdndb::MessageHeader msg;
 	Time now = Simulator::Now();
 	msg.SetVTime(m_helloInterval);
+	msg.SetTimeToLive(41993);
 	msg.SetMessageSequenceNumber(GetMessageSequenceNumber());
 	msg.SetMessageType(sdndb::MessageHeader::LCLINK_MESSAGE);
+	msg.SetOriginatorAddress(m_CCHmainAddress);
 	sdndb::MessageHeader::LCLINK &lclink = msg.GetLCLINK();
 	lclink.lcAddress = this->m_CCHmainAddress;
 	lclink.S2E = s;
@@ -1843,7 +1860,7 @@ RoutingProtocol::ComputeRoute ()
 	int s = (int)chosenIp.size();
 	int e = (int)chosenIpe.size();
 	std::cout << "s=" << s << " e=" << e << std::endl;
-	this->SendLclinkMessage(s,e);
+	SendLclinkMessage(s,e);
 
 	std::cout << "ComputeRoute finish." << std::endl;
 
