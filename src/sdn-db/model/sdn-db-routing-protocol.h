@@ -102,6 +102,7 @@ private:
 	int S2E[LC_NUM];//记录每个lc正方向链接的跳数【后期可以考虑扩展为每个lc正方向链接的数目】
 	int E2S[LC_NUM];//记录每个lc反方向链接的跳数
 	int w[LC_NUM][LC_NUM];//边的权重，即两条路的跳数之和
+	int d[LC_NUM][LC_NUM];//从一个lc到另一个lc需要走哪个方向，0表示两个都是反方向，1是反正，2是正反，3是正正
 public:
 	LcGraph();
 	void InsertW(int i, int j, int sum);
@@ -284,9 +285,11 @@ private:
   void ProcessCRREP (const sdndb::MessageHeader &msg);
   /*add by xjl 2017-3-1*/
   void SendLclinkMessage (uint32_t s, uint32_t e);
+  void SendLcRoutingMessage(std::vector<Ipv4Address> lcresult);
   void ProcessLM(const sdndb::MessageHeader &msg);
   void ComputeRoute ();//a basic version based on distance
   void ComputeRoute2 ();
+  void ComputeLcRoute(Ipv4Address sourcelc, Ipv4Address destlc);
   /*end add*/
 
   /// Check that address is one of my interfaces
@@ -403,7 +406,11 @@ private:
   void ConfigDisDirect(Vector3D lastpos,Vector3D currentpos, double &distance, CarDirect &direct);
 private:
   LcGraph m_lcgraph;//保存lc地图
-  std::map<Ipv4Address,std::vector<Ipv4Address>> m_gc_info;
+  std::map<Ipv4Address,std::map<Ipv4Address, Ipv4Address>> m_gc_info;
+  std::map<int, Ipv4Address> m_start_s2e;//保存每个lc正方向链路的第一辆车的ip
+  std::map<int, Ipv4Address> m_start_e2s;//保存每个lc反方向链路的第一辆车的ip
+  std::vector<Ipv4Address> chosenIp; //这里ip的个数就是S2E边链路的跳数
+  std::vector<Ipv4Address> chosenIpe; //这里ip的个数就是E2S边链路的跳数
 };
 
 

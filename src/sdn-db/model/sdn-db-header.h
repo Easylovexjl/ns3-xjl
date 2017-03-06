@@ -130,6 +130,7 @@ public:
     CARROUTEREQUEST_MESSAGE,
     CARROUTERESPONCE_MESSAGE,
     LCLINK_MESSAGE,
+    LCROUTING_MESSAGE,
     //LCROUTEREQUEST_MESSAGE,
     //LCROUTERESPONCE_MESSAGE
   };
@@ -425,14 +426,27 @@ public:
   };
   struct LCLINK
   {
+	  struct SCH2CCH_Tuple
+	  {
+		  Ipv4Address schAddress, cchAddress;
+	  };
 	  Ipv4Address lcAddress;
 	  uint32_t S2E, E2S;
-	  std::vector<Ipv4Address> lc_info;//在该lc区域的所有车辆ip
+	  Ipv4Address startip_s, startip_e;
+
+	  std::vector<SCH2CCH_Tuple> lc_info;//在该lc区域的所有车辆ip，{SCH,CCH}
 
 		void Print (std::ostream &os) const;
 		uint32_t GetSerializedSize (void) const;
 		void Serialize (Buffer::Iterator start) const;
 		uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
+  };
+  struct LRM
+  {
+	  struct LcRouting_Tuple
+	  {
+
+	  };
   };
   
 

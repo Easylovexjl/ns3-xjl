@@ -107,6 +107,7 @@ LcGraph::LcGraph()
 		for(int j=0; j<LC_NUM; j++)
 		{
 			w[i][j] = 0;
+			d[i][j] = -1;
 		}
 	}
 }
@@ -251,6 +252,134 @@ void LcGraph::BuildGraph()
 	InsertW(24,20,E2S[24]+E2S[20]);
 	InsertW(24,23,E2S[24]+E2S[23]);
 	InsertW(24,21,S2E[24]+E2S[21]);
+
+	d[1][2]=3;
+	d[1][5]=3;
+	d[1][4]=1;
+
+	d[2][1]=0;
+	d[2][5]=1;
+	d[2][6]=3;
+	d[2][3]=3;
+
+	d[3][2]=0;
+	d[3][6]=1;
+	d[3][7]=3;
+
+	d[4][11]=3;
+	d[4][8]=3;
+	d[4][1]=1;
+
+	d[5][1]=0;
+	d[5][8]=2;
+	d[5][12]=3;
+	d[5][9]=3;
+	d[5][2]=1;
+
+	d[6][2]=0;
+	d[6][9]=2;
+	d[6][13]=3;
+	d[6][10]=3;
+	d[6][3]=1;
+
+	d[7][3]=0;
+	d[7][10]=2;
+	d[7][14]=3;
+
+	d[8][4]=0;
+	d[8][11]=1;
+	d[8][12]=3;
+	d[8][9]=3;
+	d[8][5]=2;
+
+	d[9][5]=0;
+	d[9][8]=0;
+	d[9][12]=1;
+	d[9][13]=3;
+	d[9][10]=3;
+	d[9][6]=2;
+
+	d[10][6]=0;
+	d[10][9]=0;
+	d[10][13]=1;
+	d[10][14]=3;
+	d[10][7]=2;
+
+	d[11][18]=3;
+	d[11][15]=3;
+	d[11][8]=1;
+	d[11][4]=0;
+
+	d[12][8]=0;
+	d[12][15]=2;
+	d[12][19]=3;
+	d[12][16]=3;
+	d[12][9]=1;
+	d[12][5]=0;
+
+	d[13][9]=0;
+	d[13][16]=2;
+	d[13][20]=3;
+	d[13][17]=3;
+	d[13][10]=1;
+	d[13][6]=0;
+
+	d[14][10]=0;
+	d[14][17]=2;
+	d[14][21]=3;
+	d[14][7]=0;
+
+	d[15][11]=0;
+	d[15][18]=1;
+	d[15][19]=3;
+	d[15][16]=3;
+	d[15][12]=2;
+
+	d[16][12]=0;
+	d[16][15]=0;
+	d[16][19]=1;
+	d[16][20]=3;
+	d[16][17]=3;
+	d[16][13]=2;
+
+	d[17][13]=0;
+	d[17][16]=0;
+	d[17][20]=1;
+	d[17][21]=3;
+	d[17][14]=2;
+
+	d[18][22]=3;
+	d[18][15]=1;
+	d[18][11]=0;
+
+	d[19][15]=0;
+	d[19][22]=2;
+	d[19][23]=3;
+	d[19][16]=1;
+	d[19][12]=0;
+
+	d[20][16]=0;
+	d[20][23]=2;
+	d[20][24]=3;
+	d[20][17]=1;
+	d[20][13]=0;
+
+	d[21][17]=0;
+	d[21][24]=2;
+	d[21][14]=0;
+
+	d[22][18]=0;
+	d[22][23]=3;
+	d[22][19]=2;
+
+	d[23][19]=0;
+	d[23][22]=0;
+	d[23][24]=3;
+	d[23][20]=2;
+
+	d[24][20]=0;
+	d[24][23]=0;
+	d[24][21]=2;
 }
 std::vector<int> LcGraph::Floyd(int s, int d)
 {
@@ -647,7 +776,7 @@ RoutingProtocol::RecvSDN (Ptr<Socket> socket)
                         << "s SDN node " << m_CCHmainAddress
                         << " received CRREP message of size "
                         << messageHeader.GetSerializedSize ());
-          if (GetType() == LOCAL_CONTROLLER)
+          if (GetType() == GLOBAL_CONTROLLER)
             ProcessCRREP (messageHeader);
           break;
         case sdndb::MessageHeader::LCLINK_MESSAGE:
@@ -863,9 +992,7 @@ RoutingProtocol::ProcessCRREQ (const sdndb::MessageHeader &msg)
   const sdndb::MessageHeader::CRREQ &crreq = msg.GetCRREQ ();
   Ipv4Address dest =  crreq.destAddress;
   Ipv4Address source = crreq.sourceAddress;//the car's ip address
-  if(m_CCHmainAddress.Get()%256 == 81)// need to expand
-	  return;
-  if(m_lc_info.find(dest)==m_lc_info.end() || m_lc_info.size()<=1)
+  if(m_lc_info.find(dest)!=m_lc_info.end() || m_lc_info.size()<=1)
 	  return;
   /*for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
        cit != m_lc_info.end (); ++cit)
@@ -882,54 +1009,27 @@ void
 RoutingProtocol::ProcessCRREP (const sdndb::MessageHeader &msg)
 {
   NS_LOG_FUNCTION (msg);
-  const sdndb::MessageHeader::CRREP &crrep = msg.GetCRREP ();
-  Ipv4Address dest =  crrep.destAddress;
+//  const sdndb::MessageHeader::CRREP &crrep = msg.GetCRREP ();
+//  Ipv4Address dest =  crrep.destAddress;
 //  Ipv4Address source = crrep.sourceAddress;
-  Ipv4Address transfer = crrep.transferAddress;
- //std::cout<<"ProcessCRREP"<<transfer.Get()%256<<" "<<dest.Get()%256<<std::endl;
-  if(m_CCHmainAddress.Get()%256 == 84)
-	  return;
-  Ipv4Address mask("255.255.255.0");
-  //ComputeRoute();
-  LCAddEntry(roadendAddress,dest,mask,transfer);
-  //std::cout<<"roadendAddress"<<roadendAddress.Get()%256<<std::endl;
- // std::cout<<"infosize"<<m_lc_info.size()<<std::endl;
-  //std::cout<<"roadendAddress"<<roadendAddress.Get()%256<<std::endl;
-  int t=0;
-  for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
-       cit != m_lc_info.end (); ++cit)
-    {
-	  CarInfo Entry = cit->second;//std::cout<<t<<"ProcessCRREP1"<<Entry.R_Table.size()<<std::endl;
-	  t++;
-	  for(std::vector<RoutingTableEntry>::iterator it=Entry.R_Table.begin();it!=Entry.R_Table.end();++it)
-	  {
-		  //std::cout<<"table"<<cit->first.Get()%256<<" "<<it->destAddr.Get()%256<<" "<<it->nextHop.Get()%256<<std::endl;
-	      if(it->destAddr == roadendAddress)
-	      {
-	    	  /*RoutingTableEntry RTE;
-	    	  RTE.destAddr = dest;
-	    	  RTE.mask = it->mask;
-	    	  RTE.nextHop = it->nextHop;
-	    	  std::cout<<"entry"<<cit->first.Get()%256<<" "<<dest.Get()%256<<" "<<it->nextHop.Get()%256<<std::endl;
-	    	  RTE.interface = it->interface;
-	    	  Entry.R_Table.push_back(RTE);*/
-	    	  LCAddEntry(cit->first,dest,it->mask,it->nextHop);
-	    	  break;
-	      }
-	  }
+//  Ipv4Address transfer = crrep.transferAddress;
+//  Ipv4Address sourcelc = msg.GetOriginatorAddress();
+//  Ipv4Address destlc;
+//  for(std::map<Ipv4Address,std::map<Ipv4Address, Ipv4Address>>::iterator it=m_gc_info.begin(); it != m_gc_info.end(); ++it)
+//  {
+//	  for(std::map<Ipv4Address, Ipv4Address>::iterator iit = it->second.begin(); iit!= it->second.end(); ++iit)
+//	  {
+//		  if(*iit == dest)
+//		  {
+//			  destlc = it->first;
+//		  }
+//	  }
+//  }
+//  NS_ASSERT(destlc != 0);
 
-    }
-  /*for (std::map<Ipv4Address, CarInfo>::const_iterator cit = m_lc_info.begin ();
-       cit != m_lc_info.end (); ++cit)
-  {
-	  CarInfo Entry = cit->second;
-	  for(std::vector<RoutingTableEntry>::iterator it=Entry.R_Table.begin();it!=Entry.R_Table.end();++it)
-	  {
-		  std::cout<<"table"<<cit->first.Get()%256<<" "<<it->destAddr.Get()%256<<" "<<it->nextHop.Get()%256<<std::endl;
-	  }
-  }*/
-  //std::cout<<"ProcessCRREP"<<std::endl;
-  	 SendRoutingMessage();
+//  ComputeLcRoute(sourcelc, destlc);
+ //std::cout<<"ProcessCRREP"<<transfer.Get()%256<<" "<<dest.Get()%256<<std::endl;
+
 }
 void RoutingProtocol::ProcessLM(const sdndb::MessageHeader &msg)
 {
@@ -940,17 +1040,19 @@ void RoutingProtocol::ProcessLM(const sdndb::MessageHeader &msg)
 	int id = lc_ip.Get()%256 - CARNUM;
 	m_lcgraph.SetS2E(id,lclink.S2E);
 	m_lcgraph.SetE2S(id,lclink.E2S);
+	this->m_start_s2e[id] = lclink.startip_s;
+	this->m_start_e2s[id] = lclink.startip_e;
 	m_gc_info[lc_ip].clear();//清空该lc下的所有车辆ip后再更新
-	for(std::vector<Ipv4Address>::const_iterator it = lclink.lc_info.begin(); it != lclink.lc_info.end(); ++it)
+	for(std::vector<sdndb::MessageHeader::LCLINK::SCH2CCH_Tuple>::const_iterator it = lclink.lc_info.begin(); it != lclink.lc_info.end(); ++it)
 	{
-		m_gc_info[lc_ip].push_back(*it);
+		m_gc_info[lc_ip][it->schAddress] = it->cchAddress;
 	}
 	if(id == 9)
 	{
 		std::cout<<"lc "<<id<<" S2E = "<<lclink.S2E<<" E2S = "<<lclink.E2S<<std::endl;
-		for(std::vector<Ipv4Address>::const_iterator it = m_gc_info[lc_ip].begin(); it != m_gc_info[lc_ip].end(); ++it)
+		for(std::map<Ipv4Address, Ipv4Address>::const_iterator it = m_gc_info[lc_ip].begin(); it != m_gc_info[lc_ip].end(); ++it)
 		{
-			std::cout<<*it<<" ";
+			std::cout<<it->first<<" ";
 		}
 		std::cout<<std::endl;
 	}
@@ -1243,7 +1345,7 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p,
                                  << ": RouteOutput for dest=" << header.GetDestination ()
                                  << " No route to host");
       sockerr = Socket::ERROR_NOROUTETOHOST;
-      SendCRREQ(header.GetDestination());
+      //SendCRREQ(header.GetDestination());
       //std::cout<<"No route to host"<<std::endl;
     }
   return rtentry;
@@ -1497,7 +1599,10 @@ RoutingProtocol::SendRoutingMessage ()
       QueueMessage (msg, JITTER);
     }
 }
-
+void RoutingProtocol::SendLcRoutingMessage(std::vector<Ipv4Address> lcresult)
+{
+	//todo
+}
 void
 RoutingProtocol::SendAppointment ()
 {
@@ -1561,6 +1666,7 @@ RoutingProtocol::SendCRREP( Ipv4Address const &sourceAddress,
 void RoutingProtocol::SendLclinkMessage (uint32_t s, uint32_t e)
 {
 	NS_LOG_FUNCTION(this);
+	std::cout<<"SendLclinkMessage start."<<std::endl;
 	sdndb::MessageHeader msg;
 	Time now = Simulator::Now();
 	msg.SetVTime(m_helloInterval);
@@ -1570,16 +1676,42 @@ void RoutingProtocol::SendLclinkMessage (uint32_t s, uint32_t e)
 	lclink.lcAddress = this->m_CCHmainAddress;
 	lclink.S2E = s;
 	lclink.E2S = e;
-	for(std::map<Ipv4Address,CarInfo>::const_iterator it=m_lc_info.begin(); it != m_lc_info.end(); ++it)
+	if(s != 0)
 	{
-		lclink.lc_info.push_back(it->first);
+		lclink.startip_s = *(this->chosenIp.begin());
+	}else
+	{
+		lclink.startip_s.Set(1);
+	}
+	if(e != 0)
+	{
+		lclink.startip_e = *(this->chosenIpe.begin());
+	}else
+	{
+		lclink.startip_e.Set(1);
+	}
+
+	for(std::map<Ipv4Address, CarInfo>::iterator it=m_lc_info.begin(); it != m_lc_info.end(); ++it)
+	{
+		sdndb::MessageHeader::LCLINK::SCH2CCH_Tuple sch2cch;
+		sch2cch.schAddress = it->first;
+		if(this->m_SCHaddr2CCHaddr.find(it->first) != this->m_SCHaddr2CCHaddr.end())
+		{
+			Ipv4Address cch = this->m_SCHaddr2CCHaddr[it->first];
+			sch2cch.cchAddress = cch;
+		}else
+		{
+			std::cout<<"m_SCHaddr2CCHaddr canot find this ip."<<std::endl;
+			sch2cch.cchAddress.Set(1);
+		}
+		lclink.lc_info.push_back(sch2cch);
 	}
 	if(lclink.lcAddress.Get()%256-CARNUM == 9)
 	{
 		std::cout<<"lc "<<lclink.lcAddress<<" S2E = "<<lclink.S2E<<" E2S = "<<lclink.E2S <<std::endl;
-		for(std::vector<Ipv4Address>::const_iterator it=lclink.lc_info.begin(); it != lclink.lc_info.end(); ++it)
+		for(std::vector<sdndb::MessageHeader::LCLINK::SCH2CCH_Tuple>::iterator it=lclink.lc_info.begin(); it != lclink.lc_info.end(); ++it)
 		{
-			std::cout<<*it<<" ";
+			std::cout<<it->schAddress<<" ";
 		}
 		std::cout<<std::endl;
 	}
@@ -1614,9 +1746,10 @@ void
 RoutingProtocol::ComputeRoute ()
 {
     RemoveTimeOut (); //Remove Stale Tuple
-    std::vector<Ipv4Address> chosenIp; //这里ip的个数就是S2E边链路的跳数
-    std::vector<Ipv4Address> chosenIpe; //这里ip的个数就是E2S边链路的跳数
-    std::map<double, Ipv4Address> dis2Ipe;
+//    std::vector<Ipv4Address> chosenIp; //这里ip的个数就是S2E边链路的跳数
+//    std::vector<Ipv4Address> chosenIpe; //这里ip的个数就是E2S边链路的跳数
+    chosenIp.clear();
+    chosenIpe.clear();
 	//S一边的route
     if(!m_lc_infoS.empty()){
 		std::map<double, Ipv4Address> dis2Ip;
@@ -1665,7 +1798,7 @@ RoutingProtocol::ComputeRoute ()
 
 	//E2S边的实现
 	if(!m_lc_infoE.empty()){
-		//std::map<double, Ipv4Address> dis2Ipe;
+		std::map<double, Ipv4Address> dis2Ipe;
 
 		for (std::map<Ipv4Address, CarInfo>::iterator cit = m_lc_infoE.begin();
 				cit != m_lc_infoE.end(); ++cit) {
@@ -1707,8 +1840,9 @@ RoutingProtocol::ComputeRoute ()
 			LCAddEntry(id, dest, mask, next);
 		}
 	}
-	int s = chosenIp.size();
-	int e = chosenIpe.size();
+	int s = (int)chosenIp.size();
+	int e = (int)chosenIpe.size();
+	std::cout << "s=" << s << " e=" << e << std::endl;
 	this->SendLclinkMessage(s,e);
 
 	std::cout << "ComputeRoute finish." << std::endl;
@@ -1720,6 +1854,28 @@ RoutingProtocol::ComputeRoute2 ()
 {
 	std::cout<<"ComputeRoute2 finish."<<std::endl;
 }//RoutingProtocol::ComputeRoute2
+
+void RoutingProtocol::ComputeLcRoute(Ipv4Address sourcelc, Ipv4Address destlc)
+{
+	this->m_lcgraph.BuildGraph();
+	int s = sourcelc.Get()%256 - CARNUM;
+	int d = destlc.Get()%256 - CARNUM;
+	std::vector<int> result;
+	result = this->m_lcgraph.Floyd(s,d);
+	std::vector<Ipv4Address> lc_result;
+	Ipv4Address base;
+	base.Set("192.168.0.0");
+	Ipv4Address temp;
+	uint32_t tmp_ip;
+	for(std::vector<int>::iterator it = result.begin(); it != result.end(); ++it)
+	{
+		tmp_ip = base.Get() + CARNUM + *it;
+		temp.Set(tmp_ip);
+		lc_result.push_back(temp);
+	}
+	SendLcRoutingMessage(lc_result);
+	std::cout<<"ComputeLcRoute finish."<<std::endl;
+}
 
 void
 RoutingProtocol::Do_Init_Compute ()

@@ -35,7 +35,7 @@
 #define SDN_APPOINTMENT_HEADER_SIZE 12
 #define SDN_CRREQ_HEADER_SIZE 8
 #define SDN_CRREP_HEADER_SIZE 12
-#define SDN_LCLINK_HEADER_SIZE 12
+#define SDN_LCLINK_HEADER_SIZE 20
 
 NS_LOG_COMPONENT_DEFINE ("SdndbHeader");
 
@@ -526,7 +526,7 @@ uint32_t
 MessageHeader::LCLINK::GetSerializedSize (void) const
 {
   return (SDN_LCLINK_HEADER_SIZE +
-    this->lc_info.size () * IPV4_ADDRESS_SIZE);
+    this->lc_info.size () * IPV4_ADDRESS_SIZE * 2);
 }
 
 void
@@ -543,13 +543,16 @@ MessageHeader::LCLINK::Serialize (Buffer::Iterator start) const
   i.WriteHtonU32 (this->lcAddress.Get());
   i.WriteHtonU32 (this->S2E);
   i.WriteHtonU32 (this->E2S);
+  i.WriteHtonU32(this->startip_s.Get());
+  i.WriteHtonU32(this->startip_e.Get());
 
-  for (std::vector<Ipv4Address>::const_iterator iter =
+  for (std::vector<SCH2CCH_Tuple>::const_iterator iter =
     this->lc_info.begin ();
     iter != this->lc_info.end ();
     iter++)
     {
-      i.WriteHtonU32 (iter->Get());
+      i.WriteHtonU32 (iter->schAddress.Get());
+      i.WriteHtonU32 (iter->cchAddress.Get());
     }
 }
 
@@ -565,18 +568,28 @@ MessageHeader::LCLINK::Deserialize (Buffer::Iterator start, uint32_t messageSize
   this->lcAddress.Set(ip_temp);
   this->S2E = i.ReadNtohU32();
   this->E2S = i.ReadNtohU32();
+  ip_temp = i.ReadNtohU32();
+  this->startip_s.Set(ip_temp);
+  ip_temp = i.ReadNtohU32();
+  this->startip_e.Set(ip_temp);
 
   NS_ASSERT ((messageSize - SDN_LCLINK_HEADER_SIZE) %
     IPV4_ADDRESS_SIZE == 0);
 
   int num = (messageSize - SDN_LCLINK_HEADER_SIZE)
-    / IPV4_ADDRESS_SIZE;
-  Ipv4Address temp;
+    / (IPV4_ADDRESS_SIZE*2);
+  Ipv4Address temps,tempc;
+  uint32_t tmps, tmpc;
   for (int n = 0; n < num; ++n)
   {
-	  ip_temp = i.ReadNtohU32();
-      temp.Set(ip_temp);
-      this->lc_info.push_back (temp);
+	  tmps = i.ReadNtohU32();
+	  tmpc = i.ReadNtohU32();
+      temps.Set(tmps);
+      tempc.Set(tmpc);
+      SCH2CCH_Tuple temp_tuple;
+      temp_tuple.schAddress = temps;
+      temp_tuple.cchAddress = tempc;
+      lc_info.push_back(temp_tuple);
    }
 
   return (messageSize);
