@@ -108,6 +108,7 @@ public:
 	void InsertW(int i, int j, int sum);
 	void SetS2E(int i, int num);
 	void SetE2S(int i, int num);
+	int GetD(int i, int j);
 	void BuildGraph();
 	std::vector<int> Floyd(int s, int d);
 };
@@ -285,11 +286,12 @@ private:
   void ProcessCRREP (const sdndb::MessageHeader &msg);
   /*add by xjl 2017-3-1*/
   void SendLclinkMessage (uint32_t s, uint32_t e);
-  void SendLcRoutingMessage(std::vector<Ipv4Address> lcresult);
+  void SendLcRoutingMessage(std::vector<int> result, std::vector<Ipv4Address> lcresult,Ipv4Address dest);
   void ProcessLM(const sdndb::MessageHeader &msg);
+  void ProcessLRM(const sdndb::MessageHeader &msg);
   void ComputeRoute ();//a basic version based on distance
   void ComputeRoute2 ();
-  void ComputeLcRoute(Ipv4Address sourcelc, Ipv4Address destlc);
+  void ComputeLcRoute(Ipv4Address sourcelc, Ipv4Address destlc, Ipv4Address dest);
   /*end add*/
 
   /// Check that address is one of my interfaces

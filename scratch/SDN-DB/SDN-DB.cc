@@ -30,7 +30,7 @@ VanetSim::VanetSim()
 	txp1 = 20;  // dBm SCH
 	txp2 = 20;  // CCH
 	range1 = 400.0;//SCH
-	range2 = 1000.0;//CCH
+	range2 = 2000.0;//CCH
 	packetSize = 1000; // bytes
 	numPackets = 1;
 	interval = 0.1; // seconds
@@ -148,6 +148,7 @@ void VanetSim::LoadTraffic()
 	VMo=mobilityHelper.GetSumoMObility(sumo_net,sumo_route,sumo_fcd);
 
 	nodeNum = VMo->GetNodeSize();
+
 	os<<"Mode:  "<<m_todo<<"DataSet:  "<<m_ds<<std::endl;
 }
 
@@ -312,13 +313,13 @@ void VanetSim::ConfigMobility()
 	Temp->SetPosition(Vector(1000.0, 500.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+5)->GetObject<MobilityModel>();//LC_6
 	Temp->SetPosition(Vector(2000.0, 500.0, 0.0));
-	Temp = m_nodes.Get(nodeNum+6)->GetObject<MobilityModel>();//LC_7
+	Temp = m_nodes.Get(nodeNum+6)->GetObject<MobilityModel>();//LC_7LOCAL_CONTROLLER
 	Temp->SetPosition(Vector(3000.0, 500.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+7)->GetObject<MobilityModel>();//LC_8
 	Temp->SetPosition(Vector(500.0, 1000.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+8)->GetObject<MobilityModel>();//LC_9
 	Temp->SetPosition(Vector(1500.0, 1000.0, 0.0));
-	Temp = m_nodes.Get(nodeNum+9)->GetObject<MobilityModel>();//LC_10
+	Temp = m_nodes.Get(nodeNum+9)->GetObject<MobilityModel>();//LC_10LOCAL_CONTROLLER
 	Temp->SetPosition(Vector(2500.0, 1000.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+10)->GetObject<MobilityModel>();//LC_11
 	Temp->SetPosition(Vector(0.0, 1500.0, 0.0));
@@ -349,9 +350,9 @@ void VanetSim::ConfigMobility()
 	Temp = m_nodes.Get(nodeNum+23)->GetObject<MobilityModel>();//LC_24
 	Temp->SetPosition(Vector(2500.0, 3000.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+24)->GetObject<MobilityModel>();//source
-	Temp->SetPosition(Vector(0.0, 0.0, 0.0));
+	Temp->SetPosition(Vector(20.0, 0.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+25)->GetObject<MobilityModel>();//sink
-	Temp->SetPosition(Vector(3000.0, 3000.0, 0.0));
+	Temp->SetPosition(Vector(2980.0, 3000.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+26)->GetObject<MobilityModel>();//GC
 	Temp->SetPosition(Vector(1500.0, 1500.0, 0.0));
 }
@@ -392,7 +393,8 @@ void VanetSim::ConfigApp()
 		std::cout<<"DSDV"<<std::endl;
 		internet.Install (m_nodes);
 	}
-	else
+	else		std::cout<<"SetRoutingHelper Done"<<std::endl;
+
 	{
 	  SdndbHelper sdndb;
 	  for (uint32_t i = 0; i<nodeNum; ++i)
@@ -425,7 +427,7 @@ void VanetSim::ConfigApp()
 
 	Ipv4AddressHelper ipv4S;
 	NS_LOG_INFO ("Assign IP Addresses.");
-	ipv4S.SetBase ("10.1.1.0", "255.255.255.0");//SCH
+	ipv4S.SetBase ("10.1.0.0", "255.255.252.0");//SCH
 	m_SCHInterfaces = ipv4S.Assign (m_SCHDevices);
 	std::cout<<"IPV4S Assigned"<<std::endl;
 
@@ -433,7 +435,7 @@ void VanetSim::ConfigApp()
 	if (mod ==1)
 	{
 		NS_LOG_INFO ("Assign IP-C Addresses.");
-		ipv4C.SetBase("192.168.0.0","255.255.255.0");//CCH
+		ipv4C.SetBase("192.168.0.0","255.255.252.0");//CCH
 		m_CCHInterfaces = ipv4C.Assign(m_CCHDevices);
 		std::cout<<"IPV4C Assigned"<<std::endl;
 		for (uint32_t i = 0;i<m_nodes.GetN ();++i)
@@ -457,6 +459,7 @@ void VanetSim::ConfigApp()
 //	Address remote (InetSocketAddress(m_SCHInterfaces.GetAddress(nodeNum+3), m_port));
 	Address remote (InetSocketAddress(m_SCHInterfaces.GetAddress(nodeNum + 25), m_port));
 	OnOffHelper Source("ns3::UdpSocketFactory",remote);//SendToSink
+	Source.SetConstantRate(DataRate("10kbps"));
 	Source.SetAttribute("OffTime",StringValue ("ns3::ConstantRandomVariable[Constant=0.0]"));
 
 

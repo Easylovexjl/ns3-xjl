@@ -390,9 +390,32 @@ public:
   //   ID is the car's ID 
   struct CRREQ
   {
-    
+	    struct Position
+	    {
+	      uint32_t X, Y, Z;
+	    };
     Ipv4Address sourceAddress,destAddress;
+    Position position;
+    void SetPosition(double x, double y, double z)
+    {
+      this->position.X = IEEE754(x);
+      this->position.Y = IEEE754(y);
+      this->position.Z = IEEE754(z);
+    }
     
+    void GetPosition(double &x, double &y, double &z) const
+    {
+      x = rIEEE754(this->position.X);
+      y = rIEEE754(this->position.Y);
+      z = rIEEE754(this->position.Z);
+    }
+    
+    Vector3D GetPosition() const
+    {
+      return Vector3D(rIEEE754(this->position.X),
+                      rIEEE754(this->position.Y),
+                      rIEEE754(this->position.Z));
+    }
     void Print (std::ostream &os) const;
     uint32_t GetSerializedSize (void) const;
     void Serialize (Buffer::Iterator start) const;
@@ -443,10 +466,13 @@ public:
   };
   struct LRM
   {
-	  struct LcRouting_Tuple
-	  {
+	  Ipv4Address ID, destAddr, nextAddr;
+	  uint32_t d;//direction
 
-	  };
+	  void Print (std::ostream &os) const;
+	  uint32_t GetSerializedSize (void) const;
+	  void Serialize (Buffer::Iterator start) const;
+	  uint32_t Deserialize (Buffer::Iterator start, uint32_t messageSize);
   };
   
 
@@ -459,6 +485,7 @@ private:
     CRREQ crreq;
     CRREP crrep;
     LCLINK lclink;
+    LRM lrm;
   } m_message; // union not allowed
 
 public:
@@ -539,6 +566,18 @@ public:
 	  }
 	  return (m_message.lclink);
   }
+  LRM& GetLRM()
+  {
+	  if(m_messageType == 0)
+	  {
+		  m_messageType = LCROUTING_MESSAGE;
+	  }
+	  else
+	  {
+		  NS_ASSERT(m_messageType == LCROUTING_MESSAGE);
+	  }
+	  return (m_message.lrm);
+  }
   const Hello& GetHello () const
   {
     NS_ASSERT (m_messageType == HELLO_MESSAGE);
@@ -573,6 +612,11 @@ public:
   {
 	  NS_ASSERT(m_messageType == LCLINK_MESSAGE);
 	  return (m_message.lclink);
+  }
+  const LRM& GetLRM() const
+  {
+	  NS_ASSERT(m_messageType == LCROUTING_MESSAGE);
+	  return (m_message.lrm);
   }
 };
 

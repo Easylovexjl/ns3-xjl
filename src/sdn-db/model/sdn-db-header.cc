@@ -33,9 +33,10 @@
 #define SDN_RM_HEADER_SIZE 8
 #define SDN_RM_TUPLE_SIZE 3
 #define SDN_APPOINTMENT_HEADER_SIZE 12
-#define SDN_CRREQ_HEADER_SIZE 8
+#define SDN_CRREQ_HEADER_SIZE 20
 #define SDN_CRREP_HEADER_SIZE 12
 #define SDN_LCLINK_HEADER_SIZE 20
+#define SDN_LRM_HEADER_SIZE 16
 
 NS_LOG_COMPONENT_DEFINE ("SdndbHeader");
 
@@ -184,6 +185,9 @@ MessageHeader::GetSerializedSize (void) const
     case LCLINK_MESSAGE:
     	size += m_message.lclink.GetSerializedSize();
     	break;
+    case LCROUTING_MESSAGE:
+    	size += m_message.lrm.GetSerializedSize();
+    	break;
     //todo
     //case CARROUTERESPONCE_MESSAGE:
       //size += m_message.appointment.GetSerializedSize ();
@@ -231,6 +235,9 @@ MessageHeader::Serialize (Buffer::Iterator start) const
     case LCLINK_MESSAGE:
     	m_message.lclink.Serialize(i);
     	break;
+    case LCROUTING_MESSAGE:
+    	m_message.lrm.Serialize(i);
+    	break;
     //todo
     default:
       NS_ASSERT (false);
@@ -246,7 +253,7 @@ MessageHeader::Deserialize (Buffer::Iterator start)
   uint32_t add_temp = i.ReadNtohU32();
   SetOriginatorAddress(Ipv4Address(add_temp));
   m_messageType  = (MessageType) i.ReadU8 ();
-  NS_ASSERT (m_messageType >= HELLO_MESSAGE && m_messageType <= LCLINK_MESSAGE);//todo
+  NS_ASSERT (m_messageType >= HELLO_MESSAGE && m_messageType <= LCROUTING_MESSAGE);//todo
   m_vTime  = i.ReadU8 ();
   m_messageSize  = i.ReadNtohU16 ();
   m_timeToLive  = i.ReadNtohU16 ();
@@ -277,6 +284,10 @@ MessageHeader::Deserialize (Buffer::Iterator start)
     case LCLINK_MESSAGE:
     	size +=
     			m_message.lclink.Deserialize(i, m_messageSize - SDN_MSG_HEADER_SIZE);
+    	break;
+    case LCROUTING_MESSAGE:
+    	size +=
+    			m_message.lrm.Deserialize(i, m_messageSize - SDN_MSG_HEADER_SIZE);
     	break;
     //todo
     default:
@@ -470,6 +481,9 @@ MessageHeader::CRREQ::Serialize (Buffer::Iterator start) const
 
   i.WriteHtonU32 (this->sourceAddress.Get());
   i.WriteHtonU32 (this->destAddress.Get());
+  i.WriteHtonU32 (this->position.X);
+  i.WriteHtonU32 (this->position.Y);
+  i.WriteHtonU32 (this->position.Z);
 }
 
 uint32_t
@@ -481,6 +495,9 @@ MessageHeader::CRREQ::Deserialize (Buffer::Iterator start, uint32_t messageSize)
   this->sourceAddress.Set (ip_temp);
   ip_temp = i.ReadNtohU32();
   this->destAddress.Set (ip_temp);
+  this->position.X = i.ReadNtohU32();
+  this->position.Y = i.ReadNtohU32();
+  this->position.Z = i.ReadNtohU32();
   return (messageSize);
 }
 // ---------------- SDN CARROUTERESPONCE Message -------------------------------
@@ -593,6 +610,39 @@ MessageHeader::LCLINK::Deserialize (Buffer::Iterator start, uint32_t messageSize
    }
 
   return (messageSize);
+}
+
+// ---------------- SDN LCROUTING Message -------------------------------
+void MessageHeader::LRM::Print (std::ostream &os) const
+{
+	//todo
+}
+uint32_t MessageHeader::LRM::GetSerializedSize (void) const
+{
+	  return SDN_LRM_HEADER_SIZE;
+}
+void MessageHeader::LRM::Serialize (Buffer::Iterator start) const
+{
+	  Buffer::Iterator i = start;
+
+	  i.WriteHtonU32 (this->ID.Get());
+	  i.WriteHtonU32 (this->destAddr.Get());
+	  i.WriteHtonU32 (this->nextAddr.Get());
+	  i.WriteHtonU32(this->d);
+
+}
+uint32_t MessageHeader::LRM::Deserialize (Buffer::Iterator start, uint32_t messageSize)
+{
+	  Buffer::Iterator i = start;
+	  NS_ASSERT (messageSize >= SDN_LRM_HEADER_SIZE);
+	  uint32_t ip_temp = i.ReadNtohU32();
+	  this->ID.Set (ip_temp);
+	  ip_temp = i.ReadNtohU32();
+	  this->destAddr.Set (ip_temp);
+	  ip_temp = i.ReadNtohU32();
+	  this->nextAddr.Set (ip_temp);
+	  this->d = i.ReadNtohU32();
+	  return (messageSize);
 }
 
 }
