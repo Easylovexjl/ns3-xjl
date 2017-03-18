@@ -350,9 +350,10 @@ void VanetSim::ConfigMobility()
 	Temp = m_nodes.Get(nodeNum+23)->GetObject<MobilityModel>();//LC_24
 	Temp->SetPosition(Vector(2500.0, 3000.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+24)->GetObject<MobilityModel>();//source
-	Temp->SetPosition(Vector(20.0, 0.0, 0.0));
+	Temp->SetPosition(Vector(1000.0, 2980.0, 0.0));
 	Temp = m_nodes.Get(nodeNum+25)->GetObject<MobilityModel>();//sink
-	Temp->SetPosition(Vector(2980.0, 3000.0, 0.0));
+//	Temp->SetPosition(Vector(2980.0, 3000.0, 0.0));//放在LC_24的路尾
+	Temp->SetPosition(Vector(2000.0, 20.0, 0.0));//放在LC_6的路尾
 	Temp = m_nodes.Get(nodeNum+26)->GetObject<MobilityModel>();//GC
 	Temp->SetPosition(Vector(1500.0, 1500.0, 0.0));
 }
@@ -412,8 +413,8 @@ void VanetSim::ConfigApp()
 			sdndb.SetNodeTypeMap(m_nodes.Get(nodeNum + j), sdndb::LOCAL_CONTROLLER);
 		}
 	    //sdndb.ExcludeInterface (m_nodes.Get (nodeNum), 0);
-		sdndb.SetNodeTypeMap(m_nodes.Get(nodeNum + 24), sdndb::OTHERS);//Treat Source and Sink as CAR
-		sdndb.SetNodeTypeMap(m_nodes.Get(nodeNum + 25), sdndb::OTHERS);
+		sdndb.SetNodeTypeMap(m_nodes.Get(nodeNum + 24), sdndb::CAR);//Treat Source and Sink as CAR
+		sdndb.SetNodeTypeMap(m_nodes.Get(nodeNum + 25), sdndb::CAR);
 		sdndb.SetNodeTypeMap(m_nodes.Get(nodeNum + 26), sdndb::GLOBAL_CONTROLLER);
 	  sdndb.SetRLnSR (range1, range2);
 	  internet.SetRoutingHelper(sdndb);
@@ -427,7 +428,7 @@ void VanetSim::ConfigApp()
 
 	Ipv4AddressHelper ipv4S;
 	NS_LOG_INFO ("Assign IP Addresses.");
-	ipv4S.SetBase ("10.1.0.0", "255.255.252.0");//SCH
+	ipv4S.SetBase ("10.1.0.0", "255.255.0.0");//SCH
 	m_SCHInterfaces = ipv4S.Assign (m_SCHDevices);
 	std::cout<<"IPV4S Assigned"<<std::endl;
 
@@ -435,7 +436,7 @@ void VanetSim::ConfigApp()
 	if (mod ==1)
 	{
 		NS_LOG_INFO ("Assign IP-C Addresses.");
-		ipv4C.SetBase("192.168.0.0","255.255.252.0");//CCH
+		ipv4C.SetBase("192.168.0.0","255.255.0.0");//CCH
 		m_CCHInterfaces = ipv4C.Assign(m_CCHDevices);
 		std::cout<<"IPV4C Assigned"<<std::endl;
 		for (uint32_t i = 0;i<m_nodes.GetN ();++i)
@@ -459,12 +460,13 @@ void VanetSim::ConfigApp()
 //	Address remote (InetSocketAddress(m_SCHInterfaces.GetAddress(nodeNum+3), m_port));
 	Address remote (InetSocketAddress(m_SCHInterfaces.GetAddress(nodeNum + 25), m_port));
 	OnOffHelper Source("ns3::UdpSocketFactory",remote);//SendToSink
-	Source.SetConstantRate(DataRate("10kbps"));
-	Source.SetAttribute("OffTime",StringValue ("ns3::ConstantRandomVariable[Constant=0.0]"));
+	Source.SetConstantRate(DataRate("4096bps"),1024);
+	Source.SetAttribute("OnTime",StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"));
 
 
 //	m_source = Source.Install(m_nodes.Get(nodeNum+2));//Install on Source
 	m_source = Source.Install(m_nodes.Get(nodeNum + 24));	//Install on Source
+	m_source.Start(Seconds(260.0));
 	m_source.Stop(Seconds(duration));//Default Start time is 0.
 //	std::string temp = "/NodeList/"+std::to_string (nodeNum+2)+"/ApplicationList/0/$ns3::OnOffApplication/Tx";
 	std::string temp = "/NodeList/" + std::to_string(nodeNum + 24)
@@ -480,7 +482,7 @@ void VanetSim::ConfigApp()
 
 	//sink
 	TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-//	Ptr<Socket> sink = Socket::CreateSocket (m_nodes.Get(nodeNum+3), tid);//The Sink
+//	Ptr<Socket> sink = Socket::CreatComputeeSocket (m_nodes.Get(nodeNum+3), tid);//The Sink
 	Ptr<Socket> sink = Socket::CreateSocket(m_nodes.Get(nodeNum + 25), tid);//The Sink
   //HearALL;
 	//InetSocketAddress local = InetSocketAddress(m_CCHInterfaces.GetAddress(nodeNum+2),m_port);
@@ -496,7 +498,7 @@ void VanetSim::ReceiveDataPacket(Ptr<Socket> socket)
 	{
 		Rx_Data_Bytes += packet->GetSize();
 		Rx_Data_Pkts++;
-		std::cout<<".";
+		std::cout<<"receive data"<<Rx_Data_Pkts<<std::endl;
 	        uint64_t uid = packet->GetUid ();
 	        if (dup_det.find (uid) == dup_det.end ())
 	        {
@@ -556,7 +558,7 @@ void VanetSim::ProcessOutputs()
               std::cout<<"Best delay:   "<<best<<"us"<<std::endl;
               std::cout<<"Worst delay:   "<<worst<<"us"<<std::endl;
               std::cout<<"Avg delay: "<<avg<<"us"<<std::endl;
-   	      os<<"Best delay:   "<<best<<"us"<<std::endl;
+              os<<"Best delay:   "<<best<<"us"<<std::endl;
               os<<"Worst delay:   "<<worst<<"us"<<std::endl;
               os<<"Avg delay: "<<avg<<"us"<<std::endl;
 	}

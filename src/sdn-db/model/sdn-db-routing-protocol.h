@@ -291,6 +291,7 @@ private:
   void ProcessLRM(const sdndb::MessageHeader &msg);
   void ComputeRoute ();//a basic version based on distance
   void ComputeRoute2 ();
+  void ComputeRoute3();
   void ComputeLcRoute(Ipv4Address sourcelc, Ipv4Address destlc, Ipv4Address dest);
   /*end add*/
 
