@@ -516,7 +516,8 @@ RoutingProtocol::RoutingProtocol ()
     m_isPadding (false),
     m_numAreaVaild (false),
     m_road_length (1000),//MagicNumber
-    m_signal_range (400)
+    m_signal_range (400),
+    m_numofmessage(0)
 {
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
 }
@@ -885,14 +886,87 @@ RoutingProtocol::ProcessHM (const sdndb::MessageHeader &msg,const Ipv4Address &s
   Ipv4Address ID = msg.GetHello ().ID;//should be SCH address
   m_SCHaddr2CCHaddr[ID] = msg.GetOriginatorAddress();
   //这几行应该是用来判断是否在该LC范围内的车，如果不属于该LC的范围，则将hello包直接丢弃
-  	Vector3D lcpos = m_mobility->GetPosition();
   	Vector3D pos = msg.GetHello().GetPosition();
+  	if(IsMyArea(pos))
+  	{
+//		if(m_CCHmainAddress.Get()%1024 - CARNUM == 9)
+//		{
+//			  std::cout<<m_CCHmainAddress.Get ()%256<<" RoutingProtocol::ProcessHM "
+//				  <<msg.GetHello ().ID.Get ()%256<<" ("<<msg.GetHello().GetPosition().x<<","
+//				  <<msg.GetHello().GetPosition().y<<") m_lc_info size:"
+//				  <<m_lc_info.size ()<<std::endl;
+//		}
+
+	  std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.find (ID);
+	  if (it != m_lc_info.end ())
+		{
+		  if(ID.Get()%1024 - CARNUM == 25 || ID.Get()%1024 - CARNUM == 26)
+		  {
+			  it->second.LastActive = Simulator::Now();
+			  std::cout<<"1-m_lc_info["<<ID<<"]="<<this->m_lc_info[ID].Position.x<<std::endl;
+		  }else
+		  {
+		  it->second.Active = true;
+		  it->second.LastActive = Simulator::Now ();
+		  //set the direction and distance to start point
+		  this->ConfigDisDirect(it->second.Position, msg.GetHello().GetPosition(),
+						it->second.distostart, it->second.direct);
+		  it->second.Position = msg.GetHello ().GetPosition ();
+		  it->second.Velocity = msg.GetHello ().GetVelocity ();
+			//按照车前进方向的不同存入不同的队列
+			if (it->second.direct == S2E) {
+				m_lc_infoS[it->first] = it->second;
+			} else {
+				m_lc_infoE[it->first] = it->second;
+	//			std::cout<<"vehicle direction is E2S"<<std::endl;
+			}
+			//m_lc_info同步更新
+		  }
+			if(m_CCHmainAddress.Get()%1024 == 219 && chosenIpe.size()>0)
+			{
+				std::vector<Ipv4Address>::iterator b=chosenIpe.begin();
+				if(it->first == *b && m_lc_infoE[*b].distostart>200.0)
+				{
+					ClearUselessTable(1);
+				}
+			}
+		}
+	  else
+		{
+		  CarInfo CI_temp;
+		  CI_temp.Active = true;
+		  CI_temp.LastActive = Simulator::Now ();
+		  CI_temp.Position = msg.GetHello ().GetPosition ();
+		  CI_temp.Velocity = msg.GetHello ().GetVelocity ();
+		  m_lc_info[ID] = CI_temp;
+		}
+  	}
+//  this->RemoveTimeOut();
+}
+// \brief Configure the start point and end point of the current lane
+void RoutingProtocol::ConfigStartEnd()
+{
+	Vector3D lcpos = m_mobility->GetPosition();
+	if ((int) lcpos.x % 1000 == 0)
+	{	 //位于y方向的LC
+		m_start = Vector3D(lcpos.x, lcpos.y - 485.0, lcpos.z);
+		m_end = Vector3D(lcpos.x, lcpos.y + 485.0, lcpos.z);
+	} else if ((int) lcpos.y % 1000 == 0)
+	{	 //位于x方向的LC
+		m_start = Vector3D(lcpos.x - 485.0, lcpos.y, lcpos.z);
+		m_end = Vector3D(lcpos.x + 485.0, lcpos.y, lcpos.z);
+	}
+}
+//判断该车是否在该lc的区域里
+bool RoutingProtocol::IsMyArea(Vector3D pos)
+{
+	Vector3D lcpos = m_mobility->GetPosition();
 	if ((int) lcpos.x % 1000 == 0) {      //位于y方向
 		if ((pos.y < this->m_start.y)
 				|| (pos.y > this->m_end.y)
 				|| (pos.x < lcpos.x - 14.0)
 				|| (pos.x > lcpos.x + 14.0)) {
-			return;
+			return false;
 		}
 	}
 	if ((int) lcpos.y % 1000 == 0) {      //位于x方向
@@ -900,107 +974,11 @@ RoutingProtocol::ProcessHM (const sdndb::MessageHeader &msg,const Ipv4Address &s
 				|| (pos.x > this->m_end.x)
 				|| (pos.y < lcpos.y - 14.0)
 				|| (pos.y > lcpos.y + 14.0)) {
-			return;
+			return false;
 		}
 	}
-	if(m_CCHmainAddress.Get()%1024 - CARNUM == 9)
-	{
-		  std::cout<<m_CCHmainAddress.Get ()%256<<" RoutingProtocol::ProcessHM "
-		      <<msg.GetHello ().ID.Get ()%256<<" ("<<msg.GetHello().GetPosition().x<<","
-		      <<msg.GetHello().GetPosition().y<<") m_lc_info size:"
-		      <<m_lc_info.size ()<<std::endl;
-	}
-//	if(lcpos.x == 1000.0 && lcpos.y == 2500.0){
-//		  std::cout<<m_CCHmainAddress.Get ()%256<<" RoutingProtocol::ProcessHM "
-//		      <<msg.GetHello ().ID.Get ()%256<<" ("<<msg.GetHello().GetPosition().x<<","
-//		      <<msg.GetHello().GetPosition().y<<") m_lc_info size:"
-//		      <<m_lc_info.size ()<<std::endl;
-//		std::cout<<this->m_CCHmainAddress<<" have cars:"<<std::endl;
-//		for(std::map<Ipv4Address, CarInfo>::iterator it=this->m_lc_info.begin(); it != this->m_lc_info.end(); ++it)
-//		{
-//			std::cout<<it->first<<" "<<it->second.GetPos().x<<" "<<it->second.GetPos().y<<std::endl;
-//		}
-//	}
-//	Time now = Simulator::Now();
-//	if(now.GetSeconds() >= 316 && now.GetSeconds() <= 317)
-//	{
-//	if(lcpos.x == 2000.0 && lcpos.y == 500.0){
-//		std::cout<<"316s processhm from "<<ID<<std::endl;
-//		std::cout<<this->m_CCHmainAddress<<" have cars:"<<std::endl;
-//		for(std::map<Ipv4Address, CarInfo>::iterator it=this->m_lc_info.begin(); it != this->m_lc_info.end(); ++it)
-//		{
-//			std::cout<<it->first<<" "<<it->second.GetPos().x<<" "<<it->second.GetPos().y<<std::endl;
-//		}
-//	}
-//	}
-
-  std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.find (ID);
-  if (it != m_lc_info.end ())
-    {
-	  if(ID.Get()%1024 - CARNUM == 25 || ID.Get()%1024 - CARNUM == 26)
-	  {
-		  it->second.LastActive = Simulator::Now();
-		  std::cout<<"1-m_lc_info["<<ID<<"]="<<this->m_lc_info[ID].Position.x<<std::endl;
-	  }else
-	  {
-      it->second.Active = true;
-      it->second.LastActive = Simulator::Now ();
-      //set the direction and distance to start point
-	  this->ConfigDisDirect(it->second.Position, msg.GetHello().GetPosition(),
-					it->second.distostart, it->second.direct);
-      it->second.Position = msg.GetHello ().GetPosition ();
-      it->second.Velocity = msg.GetHello ().GetVelocity ();
-		//按照车前进方向的不同存入不同的队列
-		if (it->second.direct == S2E) {
-			m_lc_infoS[it->first] = it->second;
-//			if(m_CCHmainAddress.Get()%1024 == 219 && chosenIp.size()>0 && m_lc_infoS[*chosenIp.begin()].distostart>200.0)
-//			{
-//				ClearUselessTable(1);
-//			}
-//			std::cout<<"vehicle direction is S2E"<<std::endl;
-		} else {
-			m_lc_infoE[it->first] = it->second;
-
-//			std::cout<<"vehicle direction is E2S"<<std::endl;
-		}
-		//m_lc_info同步更新
-	  }
-		if(m_CCHmainAddress.Get()%1024 == 219 && chosenIpe.size()>0)
-		{
-			std::vector<Ipv4Address>::iterator b=chosenIpe.begin();
-			if(it->first == *b && m_lc_infoE[*b].distostart>200.0)
-			{
-				ClearUselessTable(1);
-			}
-		}
-		if(m_CCHmainAddress.Get()%1024 - CARNUM == 9)
-		{
-			  std::cout<<"m_lc_infoS size:"<<m_lc_infoS.size ()<<std::endl;
-		}
-    }
-  else
-    {
-      CarInfo CI_temp;
-      CI_temp.Active = true;
-      CI_temp.LastActive = Simulator::Now ();
-      CI_temp.Position = msg.GetHello ().GetPosition ();
-      CI_temp.Velocity = msg.GetHello ().GetVelocity ();
-      m_lc_info[ID] = CI_temp;
-    }
-//  this->RemoveTimeOut();
+	return true;
 }
-// \brief Configure the start point and end point of the current lane
-void RoutingProtocol::ConfigStartEnd() {
-	Vector3D lcpos = m_mobility->GetPosition();
-	if ((int) lcpos.x % 1000 == 0) {	 //位于y方向的LC
-		m_start = Vector3D(lcpos.x, lcpos.y - 500.0, lcpos.z);
-		m_end = Vector3D(lcpos.x, lcpos.y + 500.0, lcpos.z);
-	} else if ((int) lcpos.y % 1000 == 0) {	 //位于x方向的LC
-		m_start = Vector3D(lcpos.x - 500.0, lcpos.y, lcpos.z);
-		m_end = Vector3D(lcpos.x + 500.0, lcpos.y, lcpos.z);
-	}
-}
-
 //判断car的方向，S2E指从数值小的一边走到数值大的一边，E2S则相反
 //计算当前车辆距离所在车道起点的距离
 // \brief Calculate the distance from current position to the start position in the current lane
@@ -1593,12 +1571,12 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
 			NS_LOG_LOGIC("Broadcast local delivery to " << dest);
 			//std::cout<<"Broadcast local delivery to "<<std::endl;
 			lcb(p, header, iif);
-//			if(this->m_CCHmainAddress.Get()%1024 == 226)
-//			{
-//				int ttl = (int)header.GetTtl();
-//				m_ttl.push_back(ttl);
-//				std::cout<<"ttl:"<<ttl<<std::endl;
-//			}
+			if(this->m_CCHmainAddress.Get()%1024 == 226 && header.GetSource().Get()%1024 == 225)
+			{
+				int ttl = (int)header.GetTtl();
+				m_ttl.push_back(ttl);
+				std::cout<<"ttl:"<<ttl<<std::endl;
+			}
 			return true;
 		} else
 		{
@@ -1660,9 +1638,10 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
 //          std::cout<<"Found route to " << rtentry->GetDestination () << " via nh "
 //        		  << rtentry->GetGateway () << " with source addr " << rtentry->GetSource ()
 //        		  << " and output dev " << rtentry->GetOutputDevice ()<<std::endl;
-		Ipv4Header iheader = header;
-		iheader.SetSource(m_SCHmainAddress);
-		ucb(rtentry, p, iheader);
+//		Ipv4Header iheader = header;
+//		iheader.SetSource(m_SCHmainAddress);
+//		ucb(rtentry, p, iheader);
+		ucb(rtentry, p, header);
 	} else
 	{
 		NS_LOG_DEBUG(
@@ -2601,19 +2580,10 @@ RoutingProtocol::ComputeRoute2 ()
 			//map内部本身就是按序存储的
 			dis2Ip.insert(std::map<double, Ipv4Address>::value_type(cit->second.distostart, cit->first));
 		}
-//		double compare = 0.0;
 		for (std::map<double, Ipv4Address>::iterator dit = dis2Ip.begin();
 				dit != dis2Ip.end(); ++dit)
 		{
 			chosenIp.push_back(dit->second);
-//			if(dit->first - compare > 200)
-//			{
-//				chosenIp.push_back(dit->second);
-//				compare = dit->first;
-//			}else
-//			{
-//				chosenIp.clear();
-//			}
 		}
 		int size = chosenIp.size();
 		if(size>=4)
@@ -2629,7 +2599,6 @@ RoutingProtocol::ComputeRoute2 ()
 			}
 		}
     }
-
 
 	//E2S边的实现
 	if(!m_lc_infoE.empty()){
@@ -2655,19 +2624,10 @@ RoutingProtocol::ComputeRoute2 ()
 			}
 		}
 
-//		double compare = 0.0;
 		for (std::map<double, Ipv4Address>::iterator dit = dis2Ipe.begin();
 				dit != dis2Ipe.end(); ++dit)
 		{
 			chosenIpe.push_back(dit->second);
-//				if(dit->first - compare > 250)
-//				{
-//					chosenIpe.push_back(dit->second);
-//					compare = dit->first;
-//				}else
-//				{
-//					chosenIpe.clear();
-//				}
 		}
 
 		int size = chosenIpe.size();
@@ -3821,7 +3781,7 @@ void RoutingProtocol::ClearUselessTable(int option)
 	{
 	case 1:
 	{
-		std::cout<<"ClearSourceTable start on source"<<std::endl;
+		std::cout<<"ClearUselessTable start on source"<<std::endl;
 		Ipv4Address source("192.168.0.225");
 		sdndb::MessageHeader msg;
 		Time now = Simulator::Now ();
@@ -3839,7 +3799,7 @@ void RoutingProtocol::ClearUselessTable(int option)
 		break;
 	case 2:
 	{
-		std::cout<<"ClearSourceTable start for m_lc_infoS"<<std::endl;
+		std::cout<<"ClearUselessTable start for m_lc_infoS"<<std::endl;
 		for (std::map<Ipv4Address, CarInfo>::iterator it = m_lc_infoS.begin (); it!=m_lc_infoS.end(); ++it)
 		{
 			if(find(chosenIp.begin(),chosenIp.end(),it->first) == chosenIp.end())
@@ -3872,7 +3832,7 @@ void RoutingProtocol::ClearUselessTable(int option)
 		break;
 	case 3:
 	{
-		std::cout<<"ClearSourceTable start for m_lc_infoS"<<std::endl;
+		std::cout<<"ClearUselessTable start for m_lc_infoS"<<std::endl;
 		for (std::map<Ipv4Address, CarInfo>::iterator it = m_lc_infoE.begin (); it!=m_lc_infoE.end(); ++it)
 		{
 			if(find(chosenIpe.begin(),chosenIpe.end(),it->first) == chosenIpe.end())
@@ -3910,96 +3870,40 @@ void RoutingProtocol::ClearUselessTable(int option)
 }
 void RoutingProtocol::RemoveTimeOut()
 {
-  Time now = Simulator::Now ();
-  //remove source R_Table
-  std::cout<<"remove timeout in "<<now.GetSeconds()<<std::endl;
-//  if(this->m_CCHmainAddress.Get()%1024 - CARNUM == 19)
-//  {
-//	  Ipv4Address source("10.1.0.225");
-//	  std::map<Ipv4Address, CarInfo>::iterator sour = m_lc_info.find(source);
-//	  if(sour != m_lc_info.end())
-//	  {
-//		  sour->second.R_Table.clear();
-//		  std::cout<<"remove m_lc_info[source] R_table."<<std::endl;
-//	  }
-//  }
-  //remove time out of m_lc_info
-  std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin ();
-  std::vector<Ipv4Address> pendding;
-  while (it != m_lc_info.end ())
-    {
-      if (now.GetSeconds() - it->second.LastActive.GetSeconds () > 2 * m_helloInterval.GetSeconds()
-    		  || it->second.GetPos().x < 0.0 || it->second.GetPos().x > 3000.0 ||
-    		  it->second.GetPos().y < 0.0 || it->second.GetPos().y > 3000.0)
-        {
-          pendding.push_back (it->first);
-        }
-      ++it;
-    }
-  for (std::vector<Ipv4Address>::iterator it = pendding.begin ();
-      it != pendding.end(); ++it)
-    {
-	  std::cout<<"erase m_lc_info ip:"<<*it<<std::endl;
-      m_lc_info.erase((*it));
-    }
-  //remove time out of m_lc_infoS
-  std::map<Ipv4Address, CarInfo>::iterator its = m_lc_infoS.begin ();
-  std::vector<Ipv4Address> penddings;
-  while (its != m_lc_infoS.end ())
-    {
-      if (now.GetSeconds() - its->second.LastActive.GetSeconds () > 2 * m_helloInterval.GetSeconds()
-    		  || its->second.GetPos().x < 0.0 || its->second.GetPos().x > 3000.0 ||
-    		     its->second.GetPos().y < 0.0 || its->second.GetPos().y > 3000.0)
-        {
-          penddings.push_back (its->first);
-        }
-      ++its;
-    }
-  for (std::vector<Ipv4Address>::iterator its = penddings.begin ();
-      its != penddings.end(); ++its)
-    {
-	  std::cout<<"erase m_lc_infoS ip:"<<*it<<std::endl;
-      m_lc_infoS.erase((*its));
-    }
-  //remove time out of m_lc_infoE
-  std::map<Ipv4Address, CarInfo>::iterator ite = m_lc_infoE.begin ();
-  std::vector<Ipv4Address> penddinge;
-  while (ite != m_lc_infoE.end ())
-    {
-      if (now.GetSeconds() - ite->second.LastActive.GetSeconds () > 2 * m_helloInterval.GetSeconds()
-    		  || ite->second.GetPos().x < 0.0 || ite->second.GetPos().x > 3000.0 ||
-    		     ite->second.GetPos().y < 0.0 || ite->second.GetPos().y > 3000.0)
-        {
-          penddinge.push_back (ite->first);
-        }
-      ++ite;
-    }
-  for (std::vector<Ipv4Address>::iterator ite = penddinge.begin ();
-      ite != penddinge.end(); ++ite)
-    {
-	  std::cout<<"erase m_lc_infoE ip:"<<*it<<std::endl;
-      m_lc_infoE.erase((*ite));
-    }
-//  if(this->m_CCHmainAddress.Get()%1024 - CARNUM == 6)
-//  {
-//	  if(chosenIpe.size() > 0)
-//	  {
-//		  std::cout<<"removetimeoute start on "<<this->m_CCHmainAddress<<std::endl;
-//		  Ipv4Address ip = *chosenIpe.rbegin();
-//		  std::cout<<"ip="<<ip<<" dis="<<m_lc_infoE[ip].distostart<<std::endl;
-//		  if(m_lc_infoE[ip].distostart >= 980.0)
-//		  {
-//			  chosenIpe.pop_back();
-//			  m_lc_infoE.erase(ip);
-//			  m_lc_info.erase(ip);
-//			  std::cout<<"new end= "<<*chosenIpe.rbegin()<<std::endl;
-//			  Ipv4Address dest("10.1.0.226");
-//			  SendRoutingMessageforone(ip,dest);
-//		  }
-//	  }
-//
-//  }
+	Time now = Simulator::Now ();
+	//remove time out of m_lc_info
+	std::map<Ipv4Address, CarInfo>::iterator it = m_lc_info.begin ();
+	std::vector<Ipv4Address> pendding;
+	while (it != m_lc_info.end ())
+	{
+		if (now.GetSeconds() - it->second.LastActive.GetSeconds () > 2 * m_helloInterval.GetSeconds()
+			  || it->second.GetPos().x < 0.0 || it->second.GetPos().x > 3000.0 ||
+			  it->second.GetPos().y < 0.0 || it->second.GetPos().y > 3000.0)
+		{
+			pendding.push_back (it->first);
+		}
+		++it;
+	}
+	for (std::vector<Ipv4Address>::iterator it = pendding.begin ();
+	  it != pendding.end(); ++it)
+	{
+		std::cout<<"erase m_lc_info ip:"<<*it<<std::endl;
+		m_lc_info.erase((*it));
+		//remove time out of m_lc_infoS
+		if(m_lc_infoS.find(*it) != m_lc_infoS.end())
+		{
+//	  	    std::cout<<"erase m_lc_infoS ip:"<<*it<<std::endl;
+			m_lc_infoS.erase(*it);
+		}
+		//remove time out of m_lc_infoE
+		if(m_lc_infoE.find(*it) != m_lc_infoE.end())
+		{
+//	  	    std::cout<<"erase m_lc_infoE ip:"<<*it<<std::endl;
+			m_lc_infoE.erase(*it);
+		}
+	}
 }
+//unused for now
 void RoutingProtocol::SendRoutingMessageforone(Ipv4Address id, Ipv4Address dest)
 {
 	std::cout<<"SendRoutingMessageforone for "<<id<<std::endl;

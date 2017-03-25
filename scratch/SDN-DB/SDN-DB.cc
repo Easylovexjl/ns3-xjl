@@ -50,6 +50,7 @@ VanetSim::VanetSim()
 	m_port = 65419;
 	homepath = ".";//getenv("HOME");
 	folder="testData";
+	m_avg_forwardtimes = 0;
 }
 
 VanetSim::~VanetSim()
@@ -460,14 +461,14 @@ void VanetSim::ConfigApp()
 //	Address remote (InetSocketAddress(m_SCHInterfaces.GetAddress(nodeNum+3), m_port));
 	Address remote (InetSocketAddress(m_SCHInterfaces.GetAddress(nodeNum + 25), m_port));
 	OnOffHelper Source("ns3::UdpSocketFactory",remote);//SendToSink
-	Source.SetConstantRate(DataRate("4096bps"),1024);
+	Source.SetConstantRate(DataRate("4096bps"),512);
 	Source.SetAttribute("OnTime",StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"));
 
 
 //	m_source = Source.Install(m_nodes.Get(nodeNum+2));//Install on Source
 	m_source = Source.Install(m_nodes.Get(nodeNum + 24));	//Install on Source
-	m_source.Start(Seconds(260.0));
-	m_source.Stop(Seconds(duration));//Default Start time is 0.
+	m_source.Start(Seconds(300.0));
+	m_source.Stop(Seconds(400.0));//Default Start time is 0.
 //	std::string temp = "/NodeList/"+std::to_string (nodeNum+2)+"/ApplicationList/0/$ns3::OnOffApplication/Tx";
 	std::string temp = "/NodeList/" + std::to_string(nodeNum + 24)
 			+ "/ApplicationList/0/$ns3::OnOffApplication/Tx";
@@ -482,7 +483,7 @@ void VanetSim::ConfigApp()
 
 	//sink
 	TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-//	Ptr<Socket> sink = Socket::CreatComputeeSocket (m_nodes.Get(nodeNum+3), tid);//The Sink
+//	Ptr<Socket> sink = Socket::CreateSocket (m_nodes.Get(nodeNum+3), tid);//The Sink
 	Ptr<Socket> sink = Socket::CreateSocket(m_nodes.Get(nodeNum + 25), tid);//The Sink
   //HearALL;
 	//InetSocketAddress local = InetSocketAddress(m_CCHInterfaces.GetAddress(nodeNum+2),m_port);
@@ -527,12 +528,12 @@ void VanetSim::ConfigTracing()
 
 void VanetSim::ProcessOutputs()
 {
-	std::cout<<Tx_Data_Pkts<<std::endl;
-	std::cout<<Rx_Data_Pkts<<std::endl;
+	std::cout<<Tx_Data_Pkts<<":"<<this->Tx_Data_Bytes<<std::endl;
+	std::cout<<Rx_Data_Pkts<<":"<<this->Rx_Data_Bytes<<std::endl;
 
 	os<<"Result:"<<std::endl;
   	os<<"Tx_Data_Pkts:   "<<Tx_Data_Pkts<<std::endl;
-        os<<"Rx_Data_Pkts3:   "<<Rx_Data_Pkts<<std::endl;
+    os<<"Rx_Data_Pkts3:   "<<Rx_Data_Pkts<<std::endl;
 
         if (!delay_vector.empty ())
 	{
@@ -568,6 +569,7 @@ void VanetSim::ProcessOutputs()
 	    os<<"NO PACKETS WERE RECEIVED."<<std::endl;
 	}
 
+    std::cout<<"Average Fowarding Times: "<<m_avg_forwardtimes<<std::endl;
 }
 
 void VanetSim::Run()
@@ -577,8 +579,22 @@ void VanetSim::Run()
 	os << "Starting simulation for " << duration << " s ..."<< std::endl;
 	Simulator::Stop(Seconds(duration));
 	Simulator::Run();
+	VanetSim::Statistic();
 	Simulator::Destroy();
 
+}
+
+void VanetSim::Statistic()
+{
+	Ptr<sdndb::RoutingProtocol> routing;
+	routing = m_nodes.Get(nodeNum + 25)->GetObject<sdndb::RoutingProtocol>();
+	std::vector<int> ttl = routing->m_ttl;
+	int tmp;
+	for(std::vector<int>::iterator it=ttl.begin(); it!=ttl.end(); it++)
+	{
+		tmp += (64 - (*it));
+	}
+	m_avg_forwardtimes = tmp/ttl.size();
 }
 
 void VanetSim::Look_at_clock()

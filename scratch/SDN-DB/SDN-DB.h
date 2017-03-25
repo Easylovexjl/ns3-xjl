@@ -53,6 +53,7 @@ protected:
 	void ConfigApp();
 	void ConfigTracing();
 	void Run();
+	void Statistic();
 	void ProcessOutputs();
 	bool CheckActive(Node node);
 	void Look_at_clock();
@@ -100,6 +101,8 @@ private:
 
 	std::string m_todo;
   	std::string m_ds;//DataSet
+
+  	int m_avg_forwardtimes;
 };
 
 

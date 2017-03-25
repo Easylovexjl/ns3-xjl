@@ -296,6 +296,7 @@ private:
   bool CanbeChoose(std::vector<Ipv4Address> &chosenIp, bool isS2E);//检查选出的链路是否符合要求
   void ClearUselessTable(int option);//option=1(clear source table)option=2(clear m_lc_infoS)=3(clear m_lc_infoE)
   void SendRoutingMessageforone(Ipv4Address id, Ipv4Address dest);
+  bool IsMyArea(Vector3D pos);
   /*end add*/
 
   /// Check that address is one of my interfaces
@@ -417,6 +418,11 @@ private:
   std::map<int, Ipv4Address> m_start_e2s;//保存每个lc反方向链路的第一辆车的ip
   std::vector<Ipv4Address> chosenIp; //这里ip的个数就是S2E边链路的跳数
   std::vector<Ipv4Address> chosenIpe; //这里ip的个数就是E2S边链路的跳数
+  Ipv4Address m_source;
+  Ipv4Address m_dest;//在lc中记录需求的源节点和目的节点
+public:
+  std::vector<int> m_ttl;//用来记录dest收到的包经过多少跳到达，在routeinput中统计
+  int m_numofmessage;
 };
 
 
