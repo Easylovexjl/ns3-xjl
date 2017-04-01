@@ -1537,20 +1537,19 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
 {
 	NS_LOG_FUNCTION(
 			this << " " << m_ipv4->GetObject<Node> ()->GetId () << " " << header.GetDestination ());
-//  Time now=Simulator::Now();
 //  if(now.GetSeconds() >= 316 && now.GetSeconds() <= 317)
 //  {
 //	   std::cout<<"now 316 RouteInput on "<<m_SCHmainAddress<<std::endl;
 //	   std::cout<<"from "<<header.GetSource ()<< "to Dest:"<<header.GetDestination ()<<std::endl;
 //  }
-	if (header.GetDestination().Get() % 256 != 255)
-	{
-		std::cout << "RouteInput on " << m_SCHmainAddress << " pos="
-				<< this->m_mobility->GetPosition().x << ","
-				<< this->m_mobility->GetPosition().y << std::endl;
-		std::cout << "from " << header.GetSource() << "to Dest:"
-				<< header.GetDestination() << std::endl;
-	}
+//	if (header.GetDestination().Get() % 256 != 255)
+//	{
+//		std::cout << "RouteInput on " << m_SCHmainAddress << " pos="
+//				<< this->m_mobility->GetPosition().x << ","
+//				<< this->m_mobility->GetPosition().y << std::endl;
+//		std::cout << "from " << header.GetSource() << "to Dest:"
+//				<< header.GetDestination() << std::endl;
+//	}
 
 	Ipv4Address dest = header.GetDestination();
 	Ipv4Address sour = header.GetSource();
@@ -1674,6 +1673,12 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p,
              Socket::SocketErrno &sockerr)
 {
   NS_LOG_FUNCTION (this << " " << m_ipv4->GetObject<Node> ()->GetId () << " " << header.GetDestination () << " " << oif);
+  Time now=Simulator::Now();
+  int now_t = (int)now.GetSeconds();
+  if(now_t % 5 == 0)
+  {
+	  SendCRREQ(header.GetDestination());
+  }
   Ptr<Ipv4Route> rtentry;
   RoutingTableEntry entry;
   std::cout<<"RouteOutput "<<m_SCHmainAddress<< ",Dest:"<<header.GetDestination ()<<std::endl;
@@ -1806,10 +1811,10 @@ void RoutingProtocol::RmTimerExpire()
 //		ClearAllTables();  //std::cout<<"1:"<<std::endl;
 		//ComputeRoute();  //std::cout<<"2:"<<std::endl;
 
-		if(this->m_CCHmainAddress.Get()%1024 == 219)
-		{
-			ClearUselessTable(1);
-		}
+//		if(this->m_CCHmainAddress.Get()%1024 == 219)
+//		{
+//			ClearUselessTable(1);
+//		}
 		//ComputeRoute2();
 		ComputeRoute3();
 //		SendRoutingMessage();  //std::cout<<"3:"<<std::endl;
@@ -1861,6 +1866,7 @@ RoutingProtocol::SendPacket (Ptr<Packet> packet,
 void
 RoutingProtocol::QueueMessage (const sdndb::MessageHeader &message, Time delay)
 {
+	m_numofmessage++;
    m_queuedMessages.push_back (message);
   if (not m_queuedMessagesTimer.IsRunning ())
     {

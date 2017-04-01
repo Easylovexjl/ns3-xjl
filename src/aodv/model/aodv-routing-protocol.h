@@ -270,6 +270,9 @@ private:
   Ptr<UniformRandomVariable> m_uniformRandomVariable;  
   /// Keep track of the last bcast time
   Time m_lastBcastTime;
+public:
+  std::vector<int> m_ttl;//用来记录dest收到的包经过多少跳到达，在routeinput中统计
+  int m_numofmessage;
 };
 
 }

@@ -103,6 +103,7 @@ private:
   	std::string m_ds;//DataSet
 
   	int m_avg_forwardtimes;
+  	int m_sum_messages;
 };
 
 

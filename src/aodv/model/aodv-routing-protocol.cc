@@ -149,7 +149,8 @@ RoutingProtocol::RoutingProtocol () :
   m_htimer (Timer::CANCEL_ON_DESTROY),
   m_rreqRateLimitTimer (Timer::CANCEL_ON_DESTROY),
   m_rerrRateLimitTimer (Timer::CANCEL_ON_DESTROY),
-  m_lastBcastTime (Seconds (0))
+  m_lastBcastTime (Seconds (0)),
+  m_numofmessage(0)
 {
   m_nb.SetCallback (MakeCallback (&RoutingProtocol::SendRerrWhenBreaksLinkToNextHop, this));
 }
@@ -511,6 +512,16 @@ RoutingProtocol::RouteInput (Ptr<const Packet> p, const Ipv4Header &header,
       if (lcb.IsNull () == false)
         {
           NS_LOG_LOGIC ("Unicast local delivery to " << dst);
+			if(header.GetSource().Get()%1024 == 225)
+			{
+				int ttl = (int)header.GetTtl();
+				if(ttl > 1 && ttl < 64)
+				{
+					m_ttl.push_back(ttl);
+					std::cout<<"ttl:"<<ttl<<std::endl;
+				}
+
+			}
           lcb (p, header, iif);
         }
       else
@@ -969,7 +980,7 @@ void
 RoutingProtocol::SendTo (Ptr<Socket> socket, Ptr<Packet> packet, Ipv4Address destination)
 {
     socket->SendTo (packet, 0, InetSocketAddress (destination, AODV_PORT));
-
+    m_numofmessage++;
 }
 void
 RoutingProtocol::ScheduleRreqRetry (Ipv4Address dst)

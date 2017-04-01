@@ -51,6 +51,7 @@ VanetSim::VanetSim()
 	homepath = ".";//getenv("HOME");
 	folder="testData";
 	m_avg_forwardtimes = 0;
+	m_sum_messages = 0;
 }
 
 VanetSim::~VanetSim()
@@ -395,8 +396,7 @@ void VanetSim::ConfigApp()
 		std::cout<<"DSDV"<<std::endl;
 		internet.Install (m_nodes);
 	}
-	else		std::cout<<"SetRoutingHelper Done"<<std::endl;
-
+	else
 	{
 	  SdndbHelper sdndb;
 	  for (uint32_t i = 0; i<nodeNum; ++i)
@@ -570,6 +570,7 @@ void VanetSim::ProcessOutputs()
 	}
 
     std::cout<<"Average Fowarding Times: "<<m_avg_forwardtimes<<std::endl;
+    std::cout<<"Maintain Routing Overhead: "<<m_sum_messages<<std::endl;
 }
 
 void VanetSim::Run()
@@ -586,15 +587,49 @@ void VanetSim::Run()
 
 void VanetSim::Statistic()
 {
-	Ptr<sdndb::RoutingProtocol> routing;
-	routing = m_nodes.Get(nodeNum + 25)->GetObject<sdndb::RoutingProtocol>();
-	std::vector<int> ttl = routing->m_ttl;
-	int tmp;
-	for(std::vector<int>::iterator it=ttl.begin(); it!=ttl.end(); it++)
+	if(mod == 2)
 	{
-		tmp += (64 - (*it));
+		Ptr<ns3::aodv::RoutingProtocol> routing;
+	//	routing = m_nodes.Get(nodeNum + 25)->GetObject<sdndb::RoutingProtocol>();
+		routing = m_nodes.Get(nodeNum + 25)->GetObject<ns3::aodv::RoutingProtocol>();
+		std::vector<int> ttl = routing->m_ttl;
+		int tmp=0;
+		for(std::vector<int>::iterator it=ttl.begin(); it!=ttl.end(); it++)
+		{
+			std::cout<<*it<<" ";
+			tmp += (64 - (*it));
+		}
+		std::cout<<"\n tmp="<<tmp<<std::endl;
+		std::cout<<"m_ttl size="<<ttl.size()<<std::endl;
+		m_avg_forwardtimes = tmp/ttl.size();
+	//	for(int i=0; i<(int)nodeNum+27; i++) //for SDN-DB
+		for(int i=0; i<(int)nodeNum; i++) //for AODV
+		{
+	//		routing = m_nodes.Get(i)->GetObject<sdndb::RoutingProtocol>();
+			routing = m_nodes.Get(i)->GetObject<ns3::aodv::RoutingProtocol>();
+			m_sum_messages += routing->m_numofmessage;
+		}
 	}
-	m_avg_forwardtimes = tmp/ttl.size();
+	if(mod == 1)
+	{
+		Ptr<sdndb::RoutingProtocol> routing;
+		routing = m_nodes.Get(nodeNum + 25)->GetObject<sdndb::RoutingProtocol>();
+		std::vector<int> ttl = routing->m_ttl;
+		int tmp=0;
+		for(std::vector<int>::iterator it=ttl.begin(); it!=ttl.end(); it++)
+		{
+			std::cout<<*it<<" ";
+			tmp += (64 - (*it));
+		}
+		std::cout<<"\n tmp="<<tmp<<std::endl;
+		std::cout<<"m_ttl size="<<ttl.size()<<std::endl;
+		m_avg_forwardtimes = tmp/ttl.size();
+		for(int i=0; i<(int)nodeNum+27; i++) //for SDN-DB
+		{
+			routing = m_nodes.Get(i)->GetObject<sdndb::RoutingProtocol>();
+			m_sum_messages += routing->m_numofmessage;
+		}
+	}
 }
 
 void VanetSim::Look_at_clock()
