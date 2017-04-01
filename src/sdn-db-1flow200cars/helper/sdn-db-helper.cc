@@ -27,7 +27,8 @@ namespace ns3 {
 
 SdndbHelper::SdndbHelper ()
   : m_rl (814),
-    m_sr (419)
+    m_sr (419),
+    m_crmod(3)
 {
   m_agentFactory.SetTypeId ("ns3::sdndb::RoutingProtocol");
 }
@@ -35,7 +36,8 @@ SdndbHelper::SdndbHelper ()
 SdndbHelper::SdndbHelper (const SdndbHelper &o)
   : m_agentFactory (o.m_agentFactory),
     m_rl (o.m_rl),
-    m_sr (o.m_sr)
+    m_sr (o.m_sr),
+    m_crmod(o.m_crmod)
 {
   m_interfaceExclusions = o.m_interfaceExclusions;
   m_ntmap = o.m_ntmap;
@@ -90,7 +92,7 @@ SdndbHelper::Create (Ptr<Node> node) const
       agent->SetType (sdndb::OTHERS);
     }
   agent->SetSignalRangeNRoadLength (m_sr, m_rl);
-
+  agent->SetCRMod(m_crmod);
 
   node->AggregateObject (agent);
   return agent;
@@ -162,4 +164,8 @@ SdndbHelper::SetRLnSR(double signal_range, double road_length)
   m_rl = road_length;
 }
 
+void SdndbHelper::SetCRMod(int mode)
+{
+	m_crmod = mode;
+}
 } // namespace ns3

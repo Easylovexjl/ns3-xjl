@@ -115,6 +115,10 @@ public:
    */
   void SetRLnSR(double signal_range, double road_length);
 
+  /*
+   * Set ComputeRoute type
+   */
+  void SetCRMod(int mode);
 private:
   /**
    * \internal
@@ -127,6 +131,7 @@ private:
   std::map< Ptr<Node>, std::set<uint32_t> > m_interfaceExclusions;
   double m_rl;
   double m_sr;
+  int m_crmod;
 };
 
 } // namespace ns3
