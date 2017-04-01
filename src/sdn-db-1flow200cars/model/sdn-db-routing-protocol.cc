@@ -518,8 +518,10 @@ RoutingProtocol::RoutingProtocol ()
     m_road_length (1000),//MagicNumber
     m_signal_range (400),
     m_numofmessage(0)
+
 {
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
+  m_cr_mod = 3;
 }
 
 RoutingProtocol::~RoutingProtocol ()
@@ -1808,22 +1810,26 @@ void RoutingProtocol::RmTimerExpire()
 	//std::cout<<", Time:"<<Simulator::Now().GetSeconds ()<<std::endl;
 
 	if (GetType() == LOCAL_CONTROLLER) {
-//		ClearAllTables();  //std::cout<<"1:"<<std::endl;
-		//ComputeRoute();  //std::cout<<"2:"<<std::endl;
-
-//		if(this->m_CCHmainAddress.Get()%1024 == 219)
-//		{
-//			ClearUselessTable(1);
-//		}
-		//ComputeRoute2();
-		ComputeRoute3();
-//		SendRoutingMessage();  //std::cout<<"3:"<<std::endl;
-//		int s = (int) chosenIp.size();
-//		int e = (int) chosenIpe.size();
-//		std::cout << "s=" << s << " e=" << e << std::endl;
-//		if (s > 1 || e > 1) {
-//			SendLclinkMessage(s, e);
-//		}
+			switch(m_cr_mod)
+			{
+			case 1:
+			{
+				ComputeRoute();
+			}
+			break;
+			case 2:
+			{
+				ComputeRoute2();
+			}
+				break;
+			case 3:
+			{
+				ComputeRoute3();
+			}
+				break;
+			default:
+				std::cout<<"m_cr_mod is error!"<<std::endl;
+			}
 		m_rmTimer.Schedule(m_rmInterval);  //std::cout<<"4:"<<std::endl;
 	}
 }
@@ -2368,29 +2374,29 @@ RoutingProtocol::ComputeRoute ()
 		//record the route
 		int size = chosenIp.size();
 		//std::cout<<size<<std::endl;
-		if(size > 1)
-		{
-			std::vector<double>::iterator i = chosendiss.begin();
-			double tmp = *i;
-			i++;
-			for(; i!=chosendiss.end(); i++)
-			{
-				if(*i - tmp >= this->m_signal_range*0.9)
-				{
-					chosenIp.clear();
-				}else
-				{
-					tmp = *i;
-				}
-			}
-			std::vector<double>::reverse_iterator ri = chosendiss.rbegin();
-			if(1000.0 - *ri > this->m_signal_range)
-			{
-				chosenIp.clear();
-			}
-		}
+//		if(size > 1)
+//		{
+//			std::vector<double>::iterator i = chosendiss.begin();
+//			double tmp = *i;
+//			i++;
+//			for(; i!=chosendiss.end(); i++)
+//			{
+//				if(*i - tmp >= this->m_signal_range*0.9)
+//				{
+//					chosenIp.clear();
+//				}else
+//				{
+//					tmp = *i;
+//				}
+//			}
+//			std::vector<double>::reverse_iterator ri = chosendiss.rbegin();
+//			if(1000.0 - *ri > this->m_signal_range)
+//			{
+//				chosenIp.clear();
+//			}
+//		}
 
-		if(size > 4){
+		if(size > 0){
 			//chosenIp.pop_back();
 			Ipv4Address mask("255.255.240.0"); //这个掩码可以允许最多4096个IP
 			Ipv4Address dest = *(chosenIp.end());
@@ -2467,29 +2473,29 @@ RoutingProtocol::ComputeRoute ()
 		//record the route
 		int size = chosenIpe.size();
 		//std::cout<<size<<std::endl;
-		if(size > 1)
-		{
-			std::vector<double>::iterator i = chosendise2.begin();
-			double tmp = *i;
-			i++;
-			for(; i<chosendise2.end(); i++)
-			{
-				if(*i - tmp >= this->m_signal_range*0.9)
-				{
-					chosenIpe.clear();
-				}else
-				{
-					tmp = *i;
-				}
-			}
-			std::vector<double>::reverse_iterator ri = chosendise2.rbegin();
-			if(1000.0 - *ri > this->m_signal_range)
-			{
-				chosenIpe.clear();
-			}
-		}
+//		if(size > 1)
+//		{
+//			std::vector<double>::iterator i = chosendise2.begin();
+//			double tmp = *i;
+//			i++;
+//			for(; i<chosendise2.end(); i++)
+//			{
+//				if(*i - tmp >= this->m_signal_range*0.9)
+//				{
+//					chosenIpe.clear();
+//				}else
+//				{
+//					tmp = *i;
+//				}
+//			}
+//			std::vector<double>::reverse_iterator ri = chosendise2.rbegin();
+//			if(1000.0 - *ri > this->m_signal_range)
+//			{
+//				chosenIpe.clear();
+//			}
+//		}
 
-		if(size > 4){
+		if(size > 0){
 			//chosenIpe.pop_back();
 			Ipv4Address mask("255.255.240.0"); //这里掩码存疑，待修改
 			Ipv4Address dest = *(chosenIpe.end());
@@ -2502,12 +2508,12 @@ RoutingProtocol::ComputeRoute ()
 		}
 
 	}
-//	int s = (int)chosenIp.size();
-//	int e = (int)chosenIpe.size();
-//	std::cout << "s=" << s << " e=" << e << std::endl;
-//	if(s > 2 && e >2){
-//		SendLclinkMessage(s,e);
-//	}
+	int s = (int)chosenIp.size();
+	int e = (int)chosenIpe.size();
+	std::cout << "s=" << s << " e=" << e << std::endl;
+	if(s > 0 || e >0){
+		SendLclinkMessage(s,e);
+	}
 	if(this->m_CCHmainAddress.Get()%1024 - CARNUM == 19)
 	{
 		std::cout<<"LC1:"<<std::endl;
@@ -3937,7 +3943,10 @@ RoutingProtocol::SetSignalRangeNRoadLength (double signal_range, double road_len
   m_signal_range = signal_range;
   m_road_length = road_length;
 }
-
+void RoutingProtocol::SetCRMod(int mod)
+{
+	m_cr_mod = mod;
+}
 } // namespace sdndb
 } // namespace ns3
 

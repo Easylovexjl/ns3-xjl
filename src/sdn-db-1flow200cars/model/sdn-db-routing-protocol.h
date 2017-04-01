@@ -420,9 +420,11 @@ private:
   std::vector<Ipv4Address> chosenIpe; //这里ip的个数就是E2S边链路的跳数
   Ipv4Address m_source;
   Ipv4Address m_dest;//在lc中记录需求的源节点和目的节点
+  int m_cr_mod;
 public:
   std::vector<int> m_ttl;//用来记录dest收到的包经过多少跳到达，在routeinput中统计
   int m_numofmessage;
+  void SetCRMod(int mod);
 };
 
 

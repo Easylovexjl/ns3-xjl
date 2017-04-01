@@ -52,6 +52,7 @@ VanetSim::VanetSim()
 	folder="testData";
 	m_avg_forwardtimes = 0;
 	m_sum_messages = 0;
+	crmod = 3;
 }
 
 VanetSim::~VanetSim()
@@ -96,6 +97,7 @@ void VanetSim::ParseArguments(int argc, char *argv[])
 	cmd.AddValue ("mod", "0=olsr 1=sdn(DEFAULT) 2=aodv 3=dsdv 4=dsr", mod);
 	cmd.AddValue ("pmod", "0=Range(DEFAULT) 1=Other", pmod);
 	cmd.AddValue ("ds", "DataSet", m_ds);
+	cmd.AddValue("crmod","1=ComputeRoute 2=CR2, 3=CR3(DEFAULT)", crmod);
 	cmd.Parse (argc,argv);
 
 	// Fix non-unicast data rate to be the same as that of unicast
@@ -142,7 +144,25 @@ void VanetSim::LoadTraffic()
 	std::string sumo_fcd = temp + "/fcd.xml";
 	std::string sumo_route = temp + "/rou.xml";
 
-	std::string output = temp + "/" + m_todo + "_" + m_ds + "_result_new.txt";
+	std::string cr_mod="";
+	if(mod == 1)
+	{
+		switch(crmod)
+		{
+		case 1:
+			cr_mod = "cr1";
+			break;
+		case 2:
+			cr_mod = "cr2";
+			break;
+		case 3:
+			cr_mod = "cr3";
+			break;
+		default:
+			std::cout<<"crmod is error!"<<std::endl;
+		}
+	}
+	std::string output = temp + "/" + m_todo + "_" + cr_mod + "_"+m_ds+".txt";
 
 	os.open(output.data(),std::ios::out);
 
@@ -399,6 +419,7 @@ void VanetSim::ConfigApp()
 	else
 	{
 	  SdndbHelper sdndb;
+	  sdndb.SetCRMod(crmod);
 	  for (uint32_t i = 0; i<nodeNum; ++i)
 	    {
 	      sdndb.SetNodeTypeMap (m_nodes.Get (i), sdndb::CAR);
@@ -571,6 +592,8 @@ void VanetSim::ProcessOutputs()
 
     std::cout<<"Average Fowarding Times: "<<m_avg_forwardtimes<<std::endl;
     std::cout<<"Maintain Routing Overhead: "<<m_sum_messages<<std::endl;
+    os<<"Average Fowarding Times: "<<m_avg_forwardtimes<<std::endl;
+    os<<"Maintain Routing Overhead: "<<m_sum_messages<<std::endl;
 }
 
 void VanetSim::Run()

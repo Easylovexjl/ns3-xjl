@@ -104,6 +104,7 @@ private:
 
   	int m_avg_forwardtimes;
   	int m_sum_messages;
+  	int crmod;
 };
 
 
